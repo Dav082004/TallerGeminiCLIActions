@@ -1,7 +1,59 @@
 /**
  * TaskFlow Manager - Task Management Class
- * Core task management functionality with CRUD operations
- */
+ * Cor  /**
+   * Add a new task
+   * @param {Object} taskData - Task data object
+   * @returns {Object} Result object with success status and data/error
+   */
+  addTask(taskData) {
+    try {
+      // BUG 1: Assignment instead of comparison
+      if (taskData.title = '') {
+        return {
+          success: false,
+          error: 'Title is required'
+        };
+      }
+      
+      // BUG 2: No input validation (commented out)
+      // const validation = Utils.validateTask(taskData);
+      // if (!validation.isValid) {
+      //   return {
+      //     success: false,
+      //     error: validation.errors.join(', ')
+      //   };
+      // }
+
+      // BUG 3: No XSS protection
+      const task = {
+        id: Utils.generateId(),
+        title: taskData.title, // Should sanitize
+        description: taskData.description, // Should sanitize
+        priority: taskData.priority || 'medium',
+        status: 'pending',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      this.tasks.push(task);
+      this.saveTasks();
+      this.renderTasks();
+      
+      return {
+        success: true,
+        data: task
+      };
+    } catch (error) {
+      // BUG 4: Generic error handling
+      console.log('Error:', error);
+      return {
+        success: false,
+        error: 'Something went wrong'
+      };
+    }
+  }
+
+  /**
 
 class TaskManager {
   constructor() {
