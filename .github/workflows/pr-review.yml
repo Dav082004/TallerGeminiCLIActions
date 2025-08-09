@@ -1,0 +1,147 @@
+name: 🔍 PR Review with Gemini CLI
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  pull_request_review_comment:
+    types: [created]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    if: >
+      (github.event_name == 'pull_request') ||
+      (github.event_name == 'issue_comment' && 
+       github.event.issue.pull_request &&
+       contains(github.event.comment.body, '@gemini-cli') && 
+       contains(github.event.comment.body, '/review'))
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get PR diff
+        id: pr_diff
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            PR_NUMBER=${{ github.event.pull_request.number }}
+          else
+            PR_NUMBER=${{ github.event.issue.number }}
+          fi
+
+          # Get the diff for the PR
+          gh pr diff $PR_NUMBER > pr_diff.txt || echo "Could not get diff"
+
+          # Truncate if too large (GitHub API limits)
+          if [ -f pr_diff.txt ]; then
+            head -n 200 pr_diff.txt > pr_diff_truncated.txt
+            mv pr_diff_truncated.txt pr_diff.txt
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: 🤖 Run Gemini CLI for PR Review
+        id: gemini_review
+        uses: google-github-actions/run-gemini-cli@v0
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          prompt: |
+            You are an expert code reviewer for the TaskFlow Manager project.
+
+            CONTEXT: This is a task management web application with:
+            - Frontend: HTML, CSS, vanilla JavaScript
+            - Backend: Node.js with Express
+            - Focus on clean, maintainable code
+
+            TASK: Review the following pull request changes.
+
+            PR Title: ${{ github.event.pull_request.title || 'Manual Review Request' }}
+            PR Description: ${{ github.event.pull_request.body || 'No description provided' }}
+            PR Author: ${{ github.event.pull_request.user.login || github.event.comment.user.login }}
+
+            CODE CHANGES:
+            ```diff
+            $(cat pr_diff.txt 2>/dev/null || echo "No diff available")
+            ```
+
+            REVIEW GUIDELINES:
+            1. **Code Quality**: Check for clean, readable code
+            2. **Security**: Look for potential vulnerabilities
+            3. **Performance**: Identify optimization opportunities
+            4. **Best Practices**: Ensure following JavaScript/Node.js conventions
+            5. **Testing**: Suggest test coverage improvements
+            6. **Documentation**: Check if code is self-documenting
+
+            SPECIFIC AREAS TO CHECK:
+            - Input validation and sanitization
+            - Error handling
+            - Memory leaks or performance issues
+            - Proper use of async/await
+            - Code organization and structure
+            - Security best practices
+
+            RESPONSE FORMAT:
+            ## 🔍 Code Review Summary
+
+            **Overall Assessment:** [Approve/Request Changes/Comment]
+            **Code Quality Score:** [1-10]
+
+            ### ✅ Strengths
+            - Point 1
+            - Point 2
+
+            ### ⚠️ Issues Found
+            **High Priority:**
+            - Issue 1 (line X)
+            - Issue 2 (line Y)
+
+            **Medium Priority:**
+            - Issue 3
+            - Issue 4
+
+            **Low Priority/Suggestions:**
+            - Suggestion 1
+            - Suggestion 2
+
+            ### 🚀 Optimization Opportunities
+            - Optimization 1
+            - Optimization 2
+
+            ### 🧪 Testing Recommendations
+            - Test case 1
+            - Test case 2
+
+            ### 📚 Documentation Suggestions
+            - Doc improvement 1
+            - Doc improvement 2
+
+            ---
+            **Next Steps:** [Specific actions the author should take]
+
+      - name: 📝 Post Review Comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.issue.number || context.payload.pull_request.number;
+            const reviewBody = `${{ steps.gemini_review.outputs.summary }}
+
+            ---
+            🤖 *This review was performed automatically by Gemini CLI*
+            💡 *For manual review, comment: \`@gemini-cli /review\`*
+            📋 *Review based on TaskFlow Manager coding standards*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: reviewBody
+            });

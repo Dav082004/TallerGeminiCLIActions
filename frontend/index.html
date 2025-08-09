@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TaskFlow Manager - Smart Task Management</title>
+    <link rel="stylesheet" href="styles/main.css" />
+    <link rel="stylesheet" href="styles/components.css" />
+    <!-- Font Awesome for icons -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Header -->
+      <header class="app-header">
+        <div class="container">
+          <h1 class="app-title">
+            <i class="fas fa-tasks"></i>
+            TaskFlow Manager
+          </h1>
+          <div class="header-actions">
+            <button id="darkModeToggle" class="btn btn-secondary">
+              <i class="fas fa-moon"></i>
+            </button>
+            <button id="exportBtn" class="btn btn-primary">
+              <i class="fas fa-download"></i>
+              Export
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Content -->
+      <main class="main-content">
+        <div class="container">
+          <!-- Task Input Section -->
+          <section class="task-input-section">
+            <div class="input-card">
+              <h2>Add New Task</h2>
+              <form id="taskForm" class="task-form">
+                <div class="form-group">
+                  <label for="taskTitle">Task Title *</label>
+                  <input
+                    type="text"
+                    id="taskTitle"
+                    name="title"
+                    placeholder="Enter task title..."
+                    required
+                    maxlength="100" />
+                  <span class="char-counter">0/100</span>
+                </div>
+
+                <div class="form-group">
+                  <label for="taskDescription">Description</label>
+                  <textarea
+                    id="taskDescription"
+                    name="description"
+                    placeholder="Enter task description..."
+                    rows="3"
+                    maxlength="500"></textarea>
+                  <span class="char-counter">0/500</span>
+                </div>
+
+                <div class="form-row">
+                  <div class="form-group">
+                    <label for="taskDueDate">Due Date</label>
+                    <input type="date" id="taskDueDate" name="dueDate" />
+                  </div>
+
+                  <div class="form-group">
+                    <label for="taskPriority">Priority</label>
+                    <select id="taskPriority" name="priority">
+                      <option value="low">Low</option>
+                      <option value="medium" selected>Medium</option>
+                      <option value="high">High</option>
+                      <option value="critical">Critical</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-large">
+                  <i class="fas fa-plus"></i>
+                  Add Task
+                </button>
+              </form>
+            </div>
+          </section>
+
+          <!-- Task Filters -->
+          <section class="task-filters">
+            <div class="filter-card">
+              <div class="filter-group">
+                <label for="filterStatus">Status:</label>
+                <select id="filterStatus">
+                  <option value="all">All Tasks</option>
+                  <option value="pending">Pending</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </div>
+
+              <div class="filter-group">
+                <label for="filterPriority">Priority:</label>
+                <select id="filterPriority">
+                  <option value="all">All Priorities</option>
+                  <option value="critical">Critical</option>
+                  <option value="high">High</option>
+                  <option value="medium">Medium</option>
+                  <option value="low">Low</option>
+                </select>
+              </div>
+
+              <div class="filter-group">
+                <label for="searchTasks">Search:</label>
+                <input
+                  type="text"
+                  id="searchTasks"
+                  placeholder="Search tasks..." />
+              </div>
+
+              <button id="clearFilters" class="btn btn-secondary">
+                <i class="fas fa-times"></i>
+                Clear
+              </button>
+            </div>
+          </section>
+
+          <!-- Task Statistics -->
+          <section class="task-stats">
+            <div class="stats-grid">
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <i class="fas fa-list"></i>
+                </div>
+                <div class="stat-content">
+                  <h3 id="totalTasks">0</h3>
+                  <p>Total Tasks</p>
+                </div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-content">
+                  <h3 id="pendingTasks">0</h3>
+                  <p>Pending</p>
+                </div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <i class="fas fa-check"></i>
+                </div>
+                <div class="stat-content">
+                  <h3 id="completedTasks">0</h3>
+                  <p>Completed</p>
+                </div>
+              </div>
+
+              <div class="stat-card">
+                <div class="stat-icon">
+                  <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-content">
+                  <h3 id="overdueTasks">0</h3>
+                  <p>Overdue</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Task List -->
+          <section class="task-list-section">
+            <div class="task-list-header">
+              <h2>Your Tasks</h2>
+              <div class="sort-options">
+                <label for="sortBy">Sort by:</label>
+                <select id="sortBy">
+                  <option value="dueDate">Due Date</option>
+                  <option value="priority">Priority</option>
+                  <option value="title">Title</option>
+                  <option value="created">Created Date</option>
+                </select>
+              </div>
+            </div>
+
+            <div id="taskList" class="task-list">
+              <!-- Tasks will be dynamically inserted here -->
+            </div>
+
+            <div id="emptyState" class="empty-state" style="display: none">
+              <div class="empty-icon">
+                <i class="fas fa-clipboard-list"></i>
+              </div>
+              <h3>No Tasks Yet</h3>
+              <p>Create your first task to get started!</p>
+            </div>
+          </section>
+        </div>
+      </main>
+
+      <!-- Footer -->
+      <footer class="app-footer">
+        <div class="container">
+          <p>
+            &copy; 2025 TaskFlow Manager - Demo for
+            <strong>Gemini CLI Workflows</strong>
+          </p>
+          <div class="footer-links">
+            <a
+              href="https://github.com/google-github-actions/run-gemini-cli"
+              target="_blank">
+              <i class="fab fa-github"></i>
+              Gemini CLI
+            </a>
+            <a href="https://aistudio.google.com/apikey" target="_blank">
+              <i class="fas fa-key"></i>
+              Get API Key
+            </a>
+            <a href="#" id="aboutBtn">
+              <i class="fas fa-info-circle"></i>
+              About Demo
+            </a>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <!-- Task Modal (for editing) -->
+    <div id="taskModal" class="modal" style="display: none">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Edit Task</h3>
+          <button id="closeModal" class="btn-close">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <form id="editTaskForm">
+            <input type="hidden" id="editTaskId" name="id" />
+
+            <div class="form-group">
+              <label for="editTaskTitle">Task Title *</label>
+              <input
+                type="text"
+                id="editTaskTitle"
+                name="title"
+                required
+                maxlength="100" />
+            </div>
+
+            <div class="form-group">
+              <label for="editTaskDescription">Description</label>
+              <textarea
+                id="editTaskDescription"
+                name="description"
+                rows="3"
+                maxlength="500"></textarea>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label for="editTaskDueDate">Due Date</label>
+                <input type="date" id="editTaskDueDate" name="dueDate" />
+              </div>
+
+              <div class="form-group">
+                <label for="editTaskPriority">Priority</label>
+                <select id="editTaskPriority" name="priority">
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                  <option value="critical">Critical</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="modal-actions">
+              <button type="button" id="cancelEdit" class="btn btn-secondary">
+                Cancel
+              </button>
+              <button type="submit" class="btn btn-primary">Update Task</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="scripts/utils.js"></script>
+    <script src="scripts/taskManager.js"></script>
+    <script src="scripts/app.js"></script>
+  </body>
+</html>
