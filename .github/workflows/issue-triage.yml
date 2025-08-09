@@ -1,4 +1,4 @@
-name: 🔍 Issue Triage with Gemini CLI
+name: Issue Triage with Gemini CLI
 
 on:
   issues:
@@ -24,83 +24,79 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: 🤖 Run Gemini CLI for Issue Triage
-        id: gemini_triage
-        uses: google-github-actions/run-gemini-cli@v0
-        with:
-          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          prompt: |
-            You are an expert project manager and issue triager for the TaskFlow Manager project.
+      - name: Get issue context
+        id: context
+        run: |
+          if [ "${{ github.event_name }}" = "issues" ]; then
+            echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            echo "issue_title=${{ github.event.issue.title }}" >> $GITHUB_OUTPUT
+            echo "issue_author=${{ github.event.issue.user.login }}" >> $GITHUB_OUTPUT
+          else
+            echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            echo "issue_title=${{ github.event.issue.title }}" >> $GITHUB_OUTPUT
+            echo "issue_author=${{ github.event.issue.user.login }}" >> $GITHUB_OUTPUT
+          fi
 
-            CONTEXT: This is a task management web application built with Node.js and vanilla JavaScript.
+      - name: Run Gemini API
+        id: gemini
+        run: |
+          PROMPT="You are an expert project manager and issue triager for the TaskFlow Manager project.
 
-            TASK: Analyze the following GitHub issue and provide triage recommendations.
+          CONTEXT: This is a task management web application built with Node.js and vanilla JavaScript.
 
-            Issue Title: ${{ github.event.issue.title }}
-            Issue Body: ${{ github.event.issue.body }}
-            Issue Author: ${{ github.event.issue.user.login }}
+          TASK: Analyze the following GitHub issue and provide triage recommendations.
 
-            TRIAGE GUIDELINES:
-            1. **Classification**: Determine if this is a bug, feature request, question, or documentation issue
-            2. **Priority**: Assign priority (low, medium, high, critical) based on:
-               - Impact on users
-               - Security implications
-               - Difficulty to implement
-            3. **Labels**: Suggest appropriate labels from: bug, enhancement, question, documentation, good first issue, help wanted
-            4. **Assignment**: Suggest if this should be assigned to frontend, backend, or documentation team
-            5. **Effort Estimation**: Provide rough estimate (1-5 story points)
+          Issue Title: ${{ github.event.issue.title }}
+          Issue Body: ${{ github.event.issue.body }}
+          Issue Author: ${{ github.event.issue.user.login }}
 
-            RESPONSE FORMAT:
-            ## 🎯 Triage Analysis
+          TRIAGE GUIDELINES:
+          1. Classification: Determine if this is a bug, feature request, question, or documentation issue
+          2. Priority: Assign priority (low, medium, high, critical)
+          3. Labels: Suggest appropriate labels
+          4. Team: Suggest team (frontend, backend, documentation)
+          5. Effort: Provide rough estimate (1-5 story points)
 
-            **Classification:** [bug/enhancement/question/documentation]
-            **Priority:** [low/medium/high/critical]
-            **Estimated Effort:** [1-5 story points]
-            **Team:** [frontend/backend/documentation/any]
+          RESPONSE FORMAT:
+          Classification: [bug/enhancement/question/documentation]
+          Priority: [low/medium/high/critical]
+          Estimated Effort: [1-5 story points]
+          Team: [frontend/backend/documentation/any]
+          Suggested Labels: label1, label2, label3
+          Analysis: Brief explanation of the issue and reasoning
+          Next Steps: 1. Step one 2. Step two"
 
-            **Suggested Labels:**
-            - label1
-            - label2
+          RESPONSE=$(curl -s -H "Content-Type: application/json" \
+            -H "x-goog-api-key: ${{ secrets.GEMINI_API_KEY }}" \
+            -d "{
+              \"contents\": [{
+                \"parts\": [{
+                  \"text\": \"$PROMPT\"
+                }]
+              }]
+            }" \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent")
 
-            **Analysis:**
-            [Brief explanation of the issue and reasoning for classification]
+          RESULT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // "Error: Could not process triage"')
+          
+          echo "$RESULT" > triage_result.txt
+          echo "response_file=triage_result.txt" >> $GITHUB_OUTPUT
 
-            **Recommended Next Steps:**
-            1. Step one
-            2. Step two
-
-            **Additional Notes:**
-            [Any additional context or considerations]
-
-      - name: 📝 Comment Triage Results
+      - name: Post triage comment
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            // Determinar el número del issue
-            let issue_number;
-            if (context.eventName === 'issues') {
-              issue_number = context.payload.issue.number;
-            } else {
-              issue_number = context.payload.comment.issue.number;
-            }
+            const fs = require('fs');
+            const triageResult = fs.readFileSync('triage_result.txt', 'utf8');
             
-            // Obtener la respuesta de Gemini
-            const gemini_response = process.env.GEMINI_OUTPUT || 'Triage analysis completed';
-            
-            const comment_body = `## 🤖 Gemini CLI Triage Analysis
-
-${gemini_response}
-
----
-🤖 *This triage was performed automatically by Gemini CLI*
-💡 *For manual re-triage, comment: \\\`@gemini-cli /triage\\\`*`;
+            const commentBody = '## 🤖 Gemini CLI Triage Analysis\n\n' + 
+                                triageResult + 
+                                '\n\n---\n🤖 *This triage was performed automatically by Gemini CLI*\n💡 *For manual re-triage, comment: `@gemini-cli /triage`*';
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: issue_number,
-              body: comment_body
+              issue_number: ${{ steps.context.outputs.issue_number }},
+              body: commentBody
             });
-        env:
-          GEMINI_OUTPUT: ${{ steps.gemini_triage.outputs.response }}
