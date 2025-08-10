@@ -1,4 +1,4 @@
-name: 🤖 Gemini CLI Assistant
+name: 🤖 Asistente Gemini CLI
 
 on:
   issue_comment:
@@ -16,28 +16,28 @@ jobs:
     runs-on: ubuntu-latest
     if: >
       contains(github.event.comment.body, '@gemini-cli') &&
-      !contains(github.event.comment.body, '/triage') &&
-      !contains(github.event.comment.body, '/review')
+      !contains(github.event.comment.body, '/clasificar') &&
+      !contains(github.event.comment.body, '/revisar')
 
     steps:
-      - name: Checkout repository
+      - name: Descargar repositorio
         uses: actions/checkout@v4
 
-      - name: Extract user request
+      - name: Extraer solicitud del usuario
         id: extract_request
         run: |
-          # Extract the part after @gemini-cli
+          # Extraer la parte después de @gemini-cli
           COMMENT_BODY="${{ github.event.comment.body }}"
           USER_REQUEST=$(echo "$COMMENT_BODY" | sed -n 's/.*@gemini-cli[[:space:]]*\(.*\)/\1/p' | head -1)
 
-          # Store in GitHub output
+          # Guardar en salida de GitHub
           echo "user_request=$USER_REQUEST" >> $GITHUB_OUTPUT
-          echo "User request extracted: $USER_REQUEST"
+          echo "Solicitud del usuario extraída: $USER_REQUEST"
 
-      - name: Get relevant context
+      - name: Obtener contexto relevante
         id: context
         run: |
-          # Get current issue/PR context
+          # Obtener contexto actual del issue/PR
           if [ "${{ github.event.issue.pull_request }}" != "" ]; then
             CONTEXT_TYPE="pull_request"
             ITEM_NUMBER="${{ github.event.issue.number }}"
@@ -50,108 +50,106 @@ jobs:
             BODY="${{ github.event.issue.body }}"
           fi
 
+          # Guardar contexto
           echo "context_type=$CONTEXT_TYPE" >> $GITHUB_OUTPUT
           echo "item_number=$ITEM_NUMBER" >> $GITHUB_OUTPUT
           echo "title=$TITLE" >> $GITHUB_OUTPUT
           echo "body=$BODY" >> $GITHUB_OUTPUT
 
-      - name: Get file content if requested
-        id: file_content
-        run: |
-          # Check if user is asking about specific files
-          REQUEST="${{ steps.extract_request.outputs.user_request }}"
-          if echo "$REQUEST" | grep -E "\.(js|html|css|json|md)" > /dev/null; then
-            echo "File reference detected in request"
-            # For demo purposes, we'll include common files
-            if [ -f "frontend/app.js" ]; then
-              echo "Found frontend/app.js"
-              head -50 frontend/app.js > current_file.txt || echo "Could not read file"
-            fi
-          fi
+          # Obtener archivos relevantes del repositorio
+          find . -name "*.js" -o -name "*.json" -o -name "*.md" | head -20 > relevant_files.txt
+          echo "Archivos relevantes encontrados:"
+          cat relevant_files.txt
 
-      - name: 🤖 Run Gemini CLI Assistant
+      - name: 🤖 Ejecutar Asistente Gemini
         id: gemini_assistant
-        uses: google-github-actions/run-gemini-cli@v0
-        with:
-          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-          prompt: |
-            You are Gemini CLI, an expert AI coding assistant for the TaskFlow Manager project.
+        run: |
+          PROMPT="Eres el Asistente Gemini CLI para el proyecto TaskFlow Manager, un experto en desarrollo web con amplio conocimiento en JavaScript, Node.js y mejores prácticas de desarrollo.
 
-            PROJECT CONTEXT:
-            - **Application**: Task management web app
-            - **Tech Stack**: HTML, CSS, vanilla JavaScript frontend + Node.js backend
-            - **Focus**: Clean, maintainable, secure code
+          CONTEXTO DEL PROYECTO:
+          - Nombre: TaskFlow Manager
+          - Tipo: Aplicación web de gestión de tareas
+          - Stack Tecnológico:
+            * Frontend: HTML5, CSS3, JavaScript vanilla
+            * Backend: Node.js con Express
+            * Base de datos: localStorage (frontend) + JSON API
+            * Testing: Jest
+            * Deployment: GitHub Pages + Heroku
 
-            CURRENT CONTEXT:
-            - **Type**: ${{ steps.context.outputs.context_type }}
-            - **Number**: #${{ steps.context.outputs.item_number }}
-            - **Title**: ${{ steps.context.outputs.title }}
-            - **Description**: ${{ steps.context.outputs.body }}
+          INFORMACIÓN DEL COMENTARIO:
+          - Autor: ${{ github.event.comment.user.login }}
+          - Tipo: ${{ steps.context.outputs.context_type }}
+          - Número: #${{ steps.context.outputs.item_number }}
+          - Título: ${{ steps.context.outputs.title }}
+          
+          PREGUNTA/SOLICITUD:
+          ${{ steps.extract_request.outputs.user_request }}
 
-            USER REQUEST: "${{ steps.extract_request.outputs.user_request }}"
+          CONTEXTO ADICIONAL:
+          ${{ steps.context.outputs.body }}
 
-            CAPABILITIES:
-            You can help with:
-            ✅ Code review and optimization
-            ✅ Bug fixing and debugging
-            ✅ Writing unit tests
-            ✅ Code explanation and documentation
-            ✅ Architecture suggestions
-            ✅ Security best practices
-            ✅ Performance optimization
-            ✅ Refactoring recommendations
+          CAPACIDADES COMO ASISTENTE:
+          1. Revisión de Código: Analizar código JavaScript/Node.js y sugerir mejoras
+          2. Resolución de Problemas: Ayudar con debugging y troubleshooting
+          3. Arquitectura: Recomendar patrones de diseño y estructuras de código
+          4. Optimización: Sugerir mejoras de rendimiento y mejores prácticas
+          5. Testing: Ayudar con estrategias de testing y casos de prueba
+          6. Seguridad: Identificar vulnerabilidades y recomendar soluciones
+          7. Documentación: Asistir con documentación técnica y comentarios de código
 
-            CODING STANDARDS:
-            - Use camelCase for variables and functions
-            - Always validate user inputs
-            - Include proper error handling
-            - Write self-documenting code
-            - Follow async/await patterns
-            - Include JSDoc comments for functions
+          INSTRUCCIONES DE RESPUESTA:
+          - Sé específico y contextual al proyecto TaskFlow Manager
+          - Proporciona ejemplos de código cuando sea relevante
+          - Incluye enlaces a documentación relevante cuando sea útil
+          - Mantén un tono profesional pero amigable
+          - Si no tienes suficiente información, pregunta por más detalles específicos
+          - Prioriza soluciones prácticas y implementables
 
-            RESPONSE GUIDELINES:
-            1. **Be helpful and specific**
-            2. **Provide code examples when relevant**
-            3. **Explain your reasoning**
-            4. **Consider security implications**
-            5. **Suggest testing approaches**
-            6. **Keep responses concise but complete**
+          FORMATO DE RESPUESTA:
+          ## 🤖 Asistente Gemini CLI
 
-            SPECIAL COMMANDS:
-            - If asked to "fix", provide corrected code
-            - If asked to "optimize", suggest performance improvements
-            - If asked to "test", write unit tests
-            - If asked to "explain", provide detailed explanation
-            - If asked to "document", add proper documentation
+          [Tu respuesta detallada aquí]
 
-            FILE CONTEXT (if available):
-            ```
-            $(cat current_file.txt 2>/dev/null || echo "No specific file content available")
-            ```
+          ### 💡 Recursos Adicionales
+          - [Enlaces o referencias útiles si aplica]
 
-            Please respond to the user's request with helpful, actionable advice.
+          ### 🔄 Próximos Pasos
+          - [Pasos concretos que el usuario puede seguir]
 
-      - name: 📝 Reply to Comment
+          ---
+          💡 Necesitas más ayuda? Menciona @gemini-cli con tu pregunta específica"
+
+          RESPONSE=$(curl -s -H "Content-Type: application/json" \
+            -H "x-goog-api-key: ${{ secrets.GEMINI_API_KEY }}" \
+            -d "{
+              \"contents\": [{
+                \"parts\": [{
+                  \"text\": \"$PROMPT\"
+                }]
+              }]
+            }" \
+            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent")
+
+          RESULT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // "Error: No se pudo procesar la solicitud del asistente"')
+          
+          echo "$RESULT" > respuesta_asistente.txt
+
+      - name: 📝 Publicar respuesta del asistente
         uses: actions/github-script@v7
         with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const response = `${{ steps.gemini_assistant.outputs.summary }}
+            const fs = require('fs');
+            const respuestaAsistente = fs.readFileSync('respuesta_asistente.txt', 'utf8');
+            
+            const comentario = respuestaAsistente + 
+                              '\n\n---\n🤖 *Asistencia proporcionada por Gemini CLI*\n💡 *Para más ayuda, menciona @gemini-cli con tu pregunta específica*';
 
-            ---
-            🤖 *Gemini CLI Assistant* | 💡 *Ask me anything about your code!*
-
-            **Available commands:**
-            - \`@gemini-cli fix [description]\` - Fix code issues
-            - \`@gemini-cli optimize [code/function]\` - Performance suggestions
-            - \`@gemini-cli test [function]\` - Generate unit tests
-            - \`@gemini-cli explain [code]\` - Code explanation
-            - \`@gemini-cli document [function]\` - Add documentation
-            - \`@gemini-cli /review\` - Full code review
-            - \`@gemini-cli /triage\` - Issue classification`;
+            const itemNumber = ${{ steps.context.outputs.item_number }};
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: response
+              issue_number: itemNumber,
+              body: comentario
             });

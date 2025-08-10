@@ -1,4 +1,4 @@
-name: 🔍 PR Review with Gemini CLI
+name: � Revisión de PR con Gemini CLI
 
 on:
   pull_request:
@@ -21,15 +21,15 @@ jobs:
       (github.event_name == 'issue_comment' && 
        github.event.issue.pull_request &&
        contains(github.event.comment.body, '@gemini-cli') && 
-       contains(github.event.comment.body, '/review'))
+       contains(github.event.comment.body, '/revisar'))
 
     steps:
-      - name: Checkout repository
+      - name: Descargar repositorio
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Get PR diff
+      - name: Obtener diferencias del PR
         id: pr_diff
         run: |
           if [ "${{ github.event_name }}" = "pull_request" ]; then
@@ -38,10 +38,10 @@ jobs:
             PR_NUMBER=${{ github.event.issue.number }}
           fi
 
-          # Get the diff for the PR
-          gh pr diff $PR_NUMBER > pr_diff.txt || echo "Could not get diff"
+          # Obtener el diff del PR
+          gh pr diff $PR_NUMBER > pr_diff.txt || echo "No se pudo obtener el diff"
 
-          # Truncate if too large (GitHub API limits)
+          # Truncar si es muy grande (límites de la API de GitHub)
           if [ -f pr_diff.txt ]; then
             head -n 200 pr_diff.txt > pr_diff_truncated.txt
             mv pr_diff_truncated.txt pr_diff.txt
@@ -49,85 +49,85 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
-      - name: 🤖 Run Gemini CLI for PR Review
+      - name: 🤖 Ejecutar Gemini CLI para Revisión de PR
         id: gemini_review
         uses: google-github-actions/run-gemini-cli@v0
         with:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           prompt: |
-            You are an expert code reviewer for the TaskFlow Manager project.
+            Eres un experto revisor de código para el proyecto TaskFlow Manager.
 
-            CONTEXT: This is a task management web application with:
-            - Frontend: HTML, CSS, vanilla JavaScript
-            - Backend: Node.js with Express
-            - Focus on clean, maintainable code
+            CONTEXTO: Esta es una aplicación web de gestión de tareas con:
+            - Frontend: HTML, CSS, JavaScript vanilla
+            - Backend: Node.js con Express
+            - Enfoque en código limpio y mantenible
 
-            TASK: Review the following pull request changes.
+            TAREA: Revisa los siguientes cambios del pull request.
 
-            PR Title: ${{ github.event.pull_request.title || 'Manual Review Request' }}
-            PR Description: ${{ github.event.pull_request.body || 'No description provided' }}
-            PR Author: ${{ github.event.pull_request.user.login || github.event.comment.user.login }}
+            Título del PR: ${{ github.event.pull_request.title || 'Solicitud de Revisión Manual' }}
+            Descripción del PR: ${{ github.event.pull_request.body || 'Sin descripción proporcionada' }}
+            Autor del PR: ${{ github.event.pull_request.user.login || github.event.comment.user.login }}
 
-            CODE CHANGES:
+            CAMBIOS EN EL CÓDIGO:
             ```diff
-            $(cat pr_diff.txt 2>/dev/null || echo "No diff available")
+            $(cat pr_diff.txt 2>/dev/null || echo "No hay diff disponible")
             ```
 
-            REVIEW GUIDELINES:
-            1. **Code Quality**: Check for clean, readable code
-            2. **Security**: Look for potential vulnerabilities
-            3. **Performance**: Identify optimization opportunities
-            4. **Best Practices**: Ensure following JavaScript/Node.js conventions
-            5. **Testing**: Suggest test coverage improvements
-            6. **Documentation**: Check if code is self-documenting
+            CRITERIOS DE REVISIÓN:
+            1. **Calidad del Código**: Verificar código limpio y legible
+            2. **Seguridad**: Buscar vulnerabilidades potenciales
+            3. **Rendimiento**: Identificar oportunidades de optimización
+            4. **Mejores Prácticas**: Asegurar seguimiento de convenciones JavaScript/Node.js
+            5. **Testing**: Sugerir mejoras en cobertura de pruebas
+            6. **Documentación**: Verificar si el código es autodocumentado
 
-            SPECIFIC AREAS TO CHECK:
-            - Input validation and sanitization
-            - Error handling
-            - Memory leaks or performance issues
-            - Proper use of async/await
-            - Code organization and structure
-            - Security best practices
+            ÁREAS ESPECÍFICAS A REVISAR:
+            - Validación y sanitización de entrada
+            - Manejo de errores
+            - Memory leaks o problemas de rendimiento
+            - Uso apropiado de async/await
+            - Organización y estructura del código
+            - Mejores prácticas de seguridad
 
-            RESPONSE FORMAT:
-            ## 🔍 Code Review Summary
+            FORMATO DE RESPUESTA:
+            ## 🔍 Resumen de Revisión de Código
 
-            **Overall Assessment:** [Approve/Request Changes/Comment]
-            **Code Quality Score:** [1-10]
+            **Evaluación General:** [Aprobar/Solicitar Cambios/Comentar]
+            **Puntuación de Calidad:** [1-10]
 
-            ### ✅ Strengths
-            - Point 1
-            - Point 2
+            ### ✅ Fortalezas
+            - Punto 1
+            - Punto 2
 
-            ### ⚠️ Issues Found
-            **High Priority:**
-            - Issue 1 (line X)
-            - Issue 2 (line Y)
+            ### ⚠️ Problemas Encontrados
+            **Alta Prioridad:**
+            - Problema 1 (línea X)
+            - Problema 2 (línea Y)
 
-            **Medium Priority:**
-            - Issue 3
-            - Issue 4
+            **Prioridad Media:**
+            - Problema 3
+            - Problema 4
 
-            **Low Priority/Suggestions:**
-            - Suggestion 1
-            - Suggestion 2
+            **Baja Prioridad/Sugerencias:**
+            - Sugerencia 1
+            - Sugerencia 2
 
-            ### 🚀 Optimization Opportunities
-            - Optimization 1
-            - Optimization 2
+            ### 🚀 Oportunidades de Optimización
+            - Optimización 1
+            - Optimización 2
 
-            ### 🧪 Testing Recommendations
-            - Test case 1
-            - Test case 2
+            ### 🧪 Recomendaciones de Testing
+            - Caso de prueba 1
+            - Caso de prueba 2
 
-            ### 📚 Documentation Suggestions
-            - Doc improvement 1
-            - Doc improvement 2
+            ### 📚 Sugerencias de Documentación
+            - Mejora de documentación 1
+            - Mejora de documentación 2
 
             ---
-            **Next Steps:** [Specific actions the author should take]
+            **Próximos Pasos:** [Acciones específicas que el autor debe tomar]
 
-      - name: 📝 Post Review Comment
+      - name: 📝 Publicar Comentario de Revisión
         uses: actions/github-script@v7
         with:
           script: |
@@ -135,9 +135,9 @@ jobs:
             const reviewBody = `${{ steps.gemini_review.outputs.summary }}
 
             ---
-            🤖 *This review was performed automatically by Gemini CLI*
-            💡 *For manual review, comment: \`@gemini-cli /review\`*
-            📋 *Review based on TaskFlow Manager coding standards*`;
+            🤖 *Esta revisión fue realizada automáticamente por Gemini CLI*
+            💡 *Para revisión manual, comenta: \`@gemini-cli /revisar\`*
+            📋 *Revisión basada en estándares de código de TaskFlow Manager*`;
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,

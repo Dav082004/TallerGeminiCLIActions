@@ -1,19 +1,19 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>TaskFlow Manager - Smart Task Management</title>
+    <title>TaskFlow Manager - Gestión Inteligente de Tareas</title>
     <link rel="stylesheet" href="styles/main.css" />
     <link rel="stylesheet" href="styles/components.css" />
-    <!-- Font Awesome for icons -->
+    <!-- Font Awesome para iconos -->
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   </head>
   <body>
     <div id="app">
-      <!-- Header -->
+      <!-- Encabezado -->
       <header class="app-header">
         <div class="container">
           <h1 class="app-title">
@@ -26,38 +26,38 @@
             </button>
             <button id="exportBtn" class="btn btn-primary">
               <i class="fas fa-download"></i>
-              Export
+              Exportar
             </button>
           </div>
         </div>
       </header>
 
-      <!-- Main Content -->
+      <!-- Contenido Principal -->
       <main class="main-content">
         <div class="container">
-          <!-- Task Input Section -->
+          <!-- Sección de Entrada de Tareas -->
           <section class="task-input-section">
             <div class="input-card">
-              <h2>Add New Task</h2>
+              <h2>Agregar Nueva Tarea</h2>
               <form id="taskForm" class="task-form">
                 <div class="form-group">
-                  <label for="taskTitle">Task Title *</label>
+                  <label for="taskTitle">Título de la Tarea *</label>
                   <input
                     type="text"
                     id="taskTitle"
                     name="title"
-                    placeholder="Enter task title..."
+                    placeholder="Ingresa el título de la tarea..."
                     required
                     maxlength="100" />
                   <span class="char-counter">0/100</span>
                 </div>
 
                 <div class="form-group">
-                  <label for="taskDescription">Description</label>
+                  <label for="taskDescription">Descripción</label>
                   <textarea
                     id="taskDescription"
                     name="description"
-                    placeholder="Enter task description..."
+                    placeholder="Ingresa la descripción de la tarea..."
                     rows="3"
                     maxlength="500"></textarea>
                   <span class="char-counter">0/500</span>
@@ -65,68 +65,68 @@
 
                 <div class="form-row">
                   <div class="form-group">
-                    <label for="taskDueDate">Due Date</label>
+                    <label for="taskDueDate">Fecha de Vencimiento</label>
                     <input type="date" id="taskDueDate" name="dueDate" />
                   </div>
 
                   <div class="form-group">
-                    <label for="taskPriority">Priority</label>
+                    <label for="taskPriority">Prioridad</label>
                     <select id="taskPriority" name="priority">
-                      <option value="low">Low</option>
-                      <option value="medium" selected>Medium</option>
-                      <option value="high">High</option>
-                      <option value="critical">Critical</option>
+                      <option value="low">Baja</option>
+                      <option value="medium" selected>Media</option>
+                      <option value="high">Alta</option>
+                      <option value="critical">Crítica</option>
                     </select>
                   </div>
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-large">
                   <i class="fas fa-plus"></i>
-                  Add Task
+                  Agregar Tarea
                 </button>
               </form>
             </div>
           </section>
 
-          <!-- Task Filters -->
+          <!-- Filtros de Tareas -->
           <section class="task-filters">
             <div class="filter-card">
               <div class="filter-group">
-                <label for="filterStatus">Status:</label>
+                <label for="filterStatus">Estado:</label>
                 <select id="filterStatus">
-                  <option value="all">All Tasks</option>
-                  <option value="pending">Pending</option>
-                  <option value="completed">Completed</option>
+                  <option value="all">Todas las Tareas</option>
+                  <option value="pending">Pendientes</option>
+                  <option value="completed">Completadas</option>
                 </select>
               </div>
 
               <div class="filter-group">
-                <label for="filterPriority">Priority:</label>
+                <label for="filterPriority">Prioridad:</label>
                 <select id="filterPriority">
-                  <option value="all">All Priorities</option>
-                  <option value="critical">Critical</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
+                  <option value="all">Todas las Prioridades</option>
+                  <option value="critical">Crítica</option>
+                  <option value="high">Alta</option>
+                  <option value="medium">Media</option>
+                  <option value="low">Baja</option>
                 </select>
               </div>
 
               <div class="filter-group">
-                <label for="searchTasks">Search:</label>
+                <label for="searchTasks">Buscar:</label>
                 <input
                   type="text"
                   id="searchTasks"
-                  placeholder="Search tasks..." />
+                  placeholder="Buscar tareas..." />
               </div>
 
               <button id="clearFilters" class="btn btn-secondary">
                 <i class="fas fa-times"></i>
-                Clear
+                Limpiar
               </button>
             </div>
           </section>
 
-          <!-- Task Statistics -->
+          <!-- Estadísticas de Tareas -->
           <section class="task-stats">
             <div class="stats-grid">
               <div class="stat-card">
@@ -135,7 +135,7 @@
                 </div>
                 <div class="stat-content">
                   <h3 id="totalTasks">0</h3>
-                  <p>Total Tasks</p>
+                  <p>Total de Tareas</p>
                 </div>
               </div>
 
@@ -145,7 +145,7 @@
                 </div>
                 <div class="stat-content">
                   <h3 id="pendingTasks">0</h3>
-                  <p>Pending</p>
+                  <p>Pendientes</p>
                 </div>
               </div>
 
@@ -155,7 +155,7 @@
                 </div>
                 <div class="stat-content">
                   <h3 id="completedTasks">0</h3>
-                  <p>Completed</p>
+                  <p>Completadas</p>
                 </div>
               </div>
 
@@ -165,48 +165,48 @@
                 </div>
                 <div class="stat-content">
                   <h3 id="overdueTasks">0</h3>
-                  <p>Overdue</p>
+                  <p>Atrasadas</p>
                 </div>
               </div>
             </div>
           </section>
 
-          <!-- Task List -->
+          <!-- Lista de Tareas -->
           <section class="task-list-section">
             <div class="task-list-header">
-              <h2>Your Tasks</h2>
+              <h2>Tus Tareas</h2>
               <div class="sort-options">
-                <label for="sortBy">Sort by:</label>
+                <label for="sortBy">Ordenar por:</label>
                 <select id="sortBy">
-                  <option value="dueDate">Due Date</option>
-                  <option value="priority">Priority</option>
-                  <option value="title">Title</option>
-                  <option value="created">Created Date</option>
+                  <option value="dueDate">Fecha de Vencimiento</option>
+                  <option value="priority">Prioridad</option>
+                  <option value="title">Título</option>
+                  <option value="created">Fecha de Creación</option>
                 </select>
               </div>
             </div>
 
             <div id="taskList" class="task-list">
-              <!-- Tasks will be dynamically inserted here -->
+              <!-- Las tareas se insertarán dinámicamente aquí -->
             </div>
 
             <div id="emptyState" class="empty-state" style="display: none">
               <div class="empty-icon">
                 <i class="fas fa-clipboard-list"></i>
               </div>
-              <h3>No Tasks Yet</h3>
-              <p>Create your first task to get started!</p>
+              <h3>Aún No Hay Tareas</h3>
+              <p>¡Crea tu primera tarea para comenzar!</p>
             </div>
           </section>
         </div>
       </main>
 
-      <!-- Footer -->
+      <!-- Pie de Página -->
       <footer class="app-footer">
         <div class="container">
           <p>
-            &copy; 2025 TaskFlow Manager - Demo for
-            <strong>Gemini CLI Workflows</strong>
+            &copy; 2025 TaskFlow Manager - Demo para
+            <strong>Workflows de Gemini CLI</strong>
           </p>
           <div class="footer-links">
             <a
@@ -217,22 +217,22 @@
             </a>
             <a href="https://aistudio.google.com/apikey" target="_blank">
               <i class="fas fa-key"></i>
-              Get API Key
+              Obtener API Key
             </a>
             <a href="#" id="aboutBtn">
               <i class="fas fa-info-circle"></i>
-              About Demo
+              Acerca del Demo
             </a>
           </div>
         </div>
       </footer>
     </div>
 
-    <!-- Task Modal (for editing) -->
+    <!-- Modal de Tarea (para editar) -->
     <div id="taskModal" class="modal" style="display: none">
       <div class="modal-content">
         <div class="modal-header">
-          <h3>Edit Task</h3>
+          <h3>Editar Tarea</h3>
           <button id="closeModal" class="btn-close">
             <i class="fas fa-times"></i>
           </button>

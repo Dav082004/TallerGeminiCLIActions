@@ -1,4 +1,4 @@
-name: Issue Triage with Gemini CLI
+name: Clasificación de Issues con Gemini CLI
 
 on:
   issues:
@@ -18,13 +18,13 @@ jobs:
       (github.event_name == 'issues') ||
       (github.event_name == 'issue_comment' && 
        contains(github.event.comment.body, '@gemini-cli') && 
-       contains(github.event.comment.body, '/triage'))
+       contains(github.event.comment.body, '/clasificar'))
 
     steps:
-      - name: Checkout repository
+      - name: Descargar repositorio
         uses: actions/checkout@v4
 
-      - name: Get issue context
+      - name: Obtener contexto del issue
         id: context
         run: |
           if [ "${{ github.event_name }}" = "issues" ]; then
@@ -37,34 +37,34 @@ jobs:
             echo "issue_author=${{ github.event.issue.user.login }}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Run Gemini API
+      - name: Ejecutar API de Gemini
         id: gemini
         run: |
-          PROMPT="You are an expert project manager and issue triager for the TaskFlow Manager project.
+          PROMPT="Eres un experto gerente de proyectos y clasificador de issues para el proyecto TaskFlow Manager.
 
-          CONTEXT: This is a task management web application built with Node.js and vanilla JavaScript.
+          CONTEXTO: Esta es una aplicación web de gestión de tareas construida con Node.js y JavaScript vanilla.
 
-          TASK: Analyze the following GitHub issue and provide triage recommendations.
+          TAREA: Analiza el siguiente issue de GitHub y proporciona recomendaciones de clasificación.
 
-          Issue Title: ${{ github.event.issue.title }}
-          Issue Body: ${{ github.event.issue.body }}
-          Issue Author: ${{ github.event.issue.user.login }}
+          Título del Issue: ${{ github.event.issue.title }}
+          Contenido del Issue: ${{ github.event.issue.body }}
+          Autor del Issue: ${{ github.event.issue.user.login }}
 
-          TRIAGE GUIDELINES:
-          1. Classification: Determine if this is a bug, feature request, question, or documentation issue
-          2. Priority: Assign priority (low, medium, high, critical)
-          3. Labels: Suggest appropriate labels
-          4. Team: Suggest team (frontend, backend, documentation)
-          5. Effort: Provide rough estimate (1-5 story points)
+          CRITERIOS DE CLASIFICACIÓN:
+          1. Clasificación: Determina si es un bug, solicitud de función, pregunta o issue de documentación
+          2. Prioridad: Asigna prioridad (baja, media, alta, crítica)
+          3. Etiquetas: Sugiere etiquetas apropiadas
+          4. Equipo: Sugiere equipo (frontend, backend, documentación)
+          5. Esfuerzo: Proporciona estimación aproximada (1-5 story points)
 
-          RESPONSE FORMAT:
-          Classification: [bug/enhancement/question/documentation]
-          Priority: [low/medium/high/critical]
-          Estimated Effort: [1-5 story points]
-          Team: [frontend/backend/documentation/any]
-          Suggested Labels: label1, label2, label3
-          Analysis: Brief explanation of the issue and reasoning
-          Next Steps: 1. Step one 2. Step two"
+          FORMATO DE RESPUESTA:
+          Clasificación: [bug/mejora/pregunta/documentación]
+          Prioridad: [baja/media/alta/crítica]
+          Esfuerzo Estimado: [1-5 story points]
+          Equipo: [frontend/backend/documentación/cualquiera]
+          Etiquetas Sugeridas: etiqueta1, etiqueta2, etiqueta3
+          Análisis: Breve explicación del issue y razonamiento
+          Próximos Pasos: 1. Paso uno 2. Paso dos"
 
           RESPONSE=$(curl -s -H "Content-Type: application/json" \
             -H "x-goog-api-key: ${{ secrets.GEMINI_API_KEY }}" \
@@ -77,26 +77,26 @@ jobs:
             }" \
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent")
 
-          RESULT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // "Error: Could not process triage"')
+          RESULT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // "Error: No se pudo procesar la clasificación"')
           
-          echo "$RESULT" > triage_result.txt
-          echo "response_file=triage_result.txt" >> $GITHUB_OUTPUT
+          echo "$RESULT" > resultado_clasificacion.txt
+          echo "response_file=resultado_clasificacion.txt" >> $GITHUB_OUTPUT
 
-      - name: Post triage comment
+      - name: Publicar comentario de clasificación
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const fs = require('fs');
-            const triageResult = fs.readFileSync('triage_result.txt', 'utf8');
+            const resultadoClasificacion = fs.readFileSync('resultado_clasificacion.txt', 'utf8');
             
-            const commentBody = '## 🤖 Gemini CLI Triage Analysis\n\n' + 
-                                triageResult + 
-                                '\n\n---\n🤖 *This triage was performed automatically by Gemini CLI*\n💡 *For manual re-triage, comment: `@gemini-cli /triage`*';
+            const comentario = '## 🤖 Análisis de Clasificación Gemini CLI\n\n' + 
+                                resultadoClasificacion + 
+                                '\n\n---\n🤖 *Esta clasificación fue realizada automáticamente por Gemini CLI*\n💡 *Para re-clasificar manualmente, comenta: `@gemini-cli /clasificar`*';
 
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
               issue_number: ${{ steps.context.outputs.issue_number }},
-              body: commentBody
+              body: comentario
             });
