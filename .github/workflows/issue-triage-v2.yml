@@ -1,0 +1,106 @@
+name: 🔍 Issue Triage with Gemini CLI
+
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
+jobs:
+  triage:
+    runs-on: ubuntu-latest
+    if: >
+      (github.event_name == 'issues') ||
+      (github.event_name == 'issue_comment' && 
+       contains(github.event.comment.body, '@gemini-cli') && 
+       contains(github.event.comment.body, '/triage'))
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🤖 Run Gemini CLI for Issue Triage
+        id: gemini_triage
+        uses: google-github-actions/run-gemini-cli@v0
+        with:
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          prompt: |
+            You are an expert project manager and issue triager for the TaskFlow Manager project.
+
+            CONTEXT: This is a task management web application built with Node.js and vanilla JavaScript.
+
+            TASK: Analyze the following GitHub issue and provide triage recommendations.
+
+            Issue Title: ${{ github.event.issue.title }}
+            Issue Body: ${{ github.event.issue.body }}
+            Issue Author: ${{ github.event.issue.user.login }}
+
+            TRIAGE GUIDELINES:
+            1. **Classification**: Determine if this is a bug, feature request, question, or documentation issue
+            2. **Priority**: Assign priority (low, medium, high, critical) based on:
+               - Impact on users
+               - Security implications
+               - Difficulty to implement
+            3. **Labels**: Suggest appropriate labels from: bug, enhancement, question, documentation, good first issue, help wanted
+            4. **Assignment**: Suggest if this should be assigned to frontend, backend, or documentation team
+            5. **Effort Estimation**: Provide rough estimate (1-5 story points)
+
+            RESPONSE FORMAT:
+            ## 🎯 Triage Analysis
+
+            **Classification:** [bug/enhancement/question/documentation]
+            **Priority:** [low/medium/high/critical]
+            **Estimated Effort:** [1-5 story points]
+            **Team:** [frontend/backend/documentation/any]
+
+            **Suggested Labels:**
+            - label1
+            - label2
+
+            **Analysis:**
+            [Brief explanation of the issue and reasoning for classification]
+
+            **Recommended Next Steps:**
+            1. Step one
+            2. Step two
+
+            **Additional Notes:**
+            [Any additional context or considerations]
+
+      - name: 📝 Comment Triage Results
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            // Determinar el número del issue
+            let issue_number;
+            if (context.eventName === 'issues') {
+              issue_number = context.payload.issue.number;
+            } else {
+              issue_number = context.payload.comment.issue.number;
+            }
+            
+            // Obtener la respuesta de Gemini
+            const gemini_response = process.env.GEMINI_OUTPUT || 'Triage analysis completed';
+            
+            const comment_body = `## 🤖 Gemini CLI Triage Analysis
+
+${gemini_response}
+
+---
+🤖 *This triage was performed automatically by Gemini CLI*
+💡 *For manual re-triage, comment: \\\`@gemini-cli /triage\\\`*`;
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue_number,
+              body: comment_body
+            });
+        env:
+          GEMINI_OUTPUT: ${{ steps.gemini_triage.outputs.response }}

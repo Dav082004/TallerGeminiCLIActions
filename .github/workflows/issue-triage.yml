@@ -78,7 +78,7 @@ jobs:
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent")
 
           RESULT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // "Error: No se pudo procesar la clasificación"')
-          
+
           echo "$RESULT" > resultado_clasificacion.txt
           echo "response_file=resultado_clasificacion.txt" >> $GITHUB_OUTPUT
 
@@ -89,7 +89,7 @@ jobs:
           script: |
             const fs = require('fs');
             const resultadoClasificacion = fs.readFileSync('resultado_clasificacion.txt', 'utf8');
-            
+
             const comentario = '## 🤖 Análisis de Clasificación Gemini CLI\n\n' + 
                                 resultadoClasificacion + 
                                 '\n\n---\n🤖 *Esta clasificación fue realizada automáticamente por Gemini CLI*\n💡 *Para re-clasificar manualmente, comenta: `@gemini-cli /clasificar`*';

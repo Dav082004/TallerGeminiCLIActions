@@ -27,6 +27,7 @@ Muchos desarrolladores y usuarios trabajan en espacios con poca iluminación, es
 ### **Implementación Técnica**
 
 #### **CSS Variables**
+
 ```css
 :root {
   --color-primary: #3b82f6;
@@ -44,32 +45,35 @@ Muchos desarrolladores y usuarios trabajan en espacios con poca iluminación, es
 ```
 
 #### **JavaScript Logic**
+
 ```javascript
 class ThemeManager {
   constructor() {
-    this.theme = localStorage.getItem('theme') || 'auto';
+    this.theme = localStorage.getItem("theme") || "auto";
     this.initialize();
   }
 
   initialize() {
-    if (this.theme === 'auto') {
-      this.theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (this.theme === "auto") {
+      this.theme = window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
     }
     this.applyTheme();
   }
 
   toggle() {
-    this.theme = this.theme === 'light' ? 'dark' : 'light';
+    this.theme = this.theme === "light" ? "dark" : "light";
     this.applyTheme();
     this.savePreference();
   }
 
   applyTheme() {
-    document.documentElement.setAttribute('data-theme', this.theme);
+    document.documentElement.setAttribute("data-theme", this.theme);
   }
 
   savePreference() {
-    localStorage.setItem('theme', this.theme);
+    localStorage.setItem("theme", this.theme);
   }
 }
 ```
@@ -77,29 +81,34 @@ class ThemeManager {
 ## **Criterios de Aceptación**
 
 ### **Funcionalidad Básica**
+
 - [ ] Toggle button visible y accesible en el header
 - [ ] Cambio instantáneo de tema al hacer clic
 - [ ] Todas las secciones de la UI se adaptan al tema elegido
 - [ ] Iconos y elementos visuales cambian apropiadamente
 
 ### **Persistencia**
+
 - [ ] La preferencia se guarda en localStorage
 - [ ] El tema persiste después de recargar la página
 - [ ] El tema persiste entre sesiones del navegador
 
 ### **Experiencia de Usuario**
+
 - [ ] Transiciones suaves entre temas (300ms)
 - [ ] No hay flash de contenido sin estilo (FOUC)
 - [ ] Mantiene el contraste adecuado para accesibilidad
 - [ ] Iconos apropiados (sol/luna) para cada modo
 
 ### **Accesibilidad**
+
 - [ ] Contraste mínimo de 4.5:1 para texto normal
 - [ ] Contraste mínimo de 3:1 para texto grande
 - [ ] Soporte para lectores de pantalla
 - [ ] Navegación por teclado funcional
 
 ### **Responsividad**
+
 - [ ] Funciona correctamente en dispositivos móviles
 - [ ] Mantiene la usabilidad en tablets
 - [ ] Se adapta a diferentes tamaños de pantalla
@@ -107,6 +116,7 @@ class ThemeManager {
 ## **Mockups y Diseño**
 
 ### **Modo Claro (Actual)**
+
 ```
 Header: #ffffff con texto #1f2937
 Cards: #f9fafb con bordes #e5e7eb
@@ -114,6 +124,7 @@ Buttons: #3b82f6 con texto #ffffff
 ```
 
 ### **Modo Oscuro (Propuesto)**
+
 ```
 Header: #1f2937 con texto #f9fafb
 Cards: #374151 con bordes #4b5563
@@ -123,11 +134,13 @@ Buttons: #60a5fa con texto #111827
 ## **Beneficios Esperados**
 
 ### **Para los Usuarios**
+
 - **Mejor experiencia nocturna** sin cansar la vista
 - **Personalización** de la interfaz según preferencias
 - **Ahorro de batería** en dispositivos móviles con OLED
 
 ### **Para el Proyecto**
+
 - **Modernización** de la interfaz siguiendo tendencias actuales
 - **Diferenciación** competitiva frente a otras herramientas
 - **Base sólida** para futuras personalizaciones de tema
@@ -135,16 +148,19 @@ Buttons: #60a5fa con texto #111827
 ## **Consideraciones Técnicas**
 
 ### **Compatibilidad**
+
 - **Navegadores soportados**: Chrome 76+, Firefox 67+, Safari 12.1+
 - **Fallback graceful** para navegadores más antiguos
 - **No debe romper** funcionalidad existente
 
 ### **Performance**
+
 - **Impacto mínimo** en tiempo de carga
 - **CSS optimizado** para transiciones suaves
 - **Lazy loading** de assets del tema oscuro
 
 ### **Mantenimiento**
+
 - **Documentar** variables CSS para futuros desarrolladores
 - **Testing** en ambos temas para todas las funcionalidades
 - **Considerar** herramientas automatizadas de contraste

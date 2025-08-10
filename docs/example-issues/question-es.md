@@ -13,12 +13,14 @@ Estoy trabajando en una mejora para TaskFlow Manager donde los usuarios puedan r
 ## **Escenario Específico**
 
 ### **Funcionalidad Deseada**
+
 - Notificar al usuario 1 hora antes del vencimiento de una tarea
 - Notificar cuando una tarea se vence
 - Permitir al usuario configurar horarios de "no molestar"
 - Funcionar incluso cuando la pestaña no está activa
 
 ### **Arquitectura Actual**
+
 - **Frontend**: Vanilla JavaScript con localStorage
 - **Backend**: Node.js + Express (API REST)
 - **Persistencia**: JSON files (para el demo)
@@ -27,19 +29,19 @@ Estoy trabajando en una mejora para TaskFlow Manager donde los usuarios puedan r
 ## **Opciones que Estoy Considerando**
 
 ### **Opción 1: Web Push API + Service Worker**
+
 ```javascript
 // Registro del service worker
-if ('serviceWorker' in navigator && 'PushManager' in window) {
-  navigator.serviceWorker.register('/sw.js')
-    .then(registration => {
-      console.log('SW registered: ', registration);
-    });
+if ("serviceWorker" in navigator && "PushManager" in window) {
+  navigator.serviceWorker.register("/sw.js").then((registration) => {
+    console.log("SW registered: ", registration);
+  });
 }
 
 // Solicitar permisos
 function requestNotificationPermission() {
-  return Notification.requestPermission().then(permission => {
-    if (permission === 'granted') {
+  return Notification.requestPermission().then((permission) => {
+    if (permission === "granted") {
       subscribeUserToPush();
     }
   });
@@ -47,28 +49,31 @@ function requestNotificationPermission() {
 ```
 
 **Pros:**
+
 - Funciona incluso con la pestaña cerrada
 - Soporte nativo del navegador
 - No requiere servicios externos
 
 **Contras:**
+
 - Curva de aprendizaje empinada
 - Configuración compleja del service worker
 - Requiere HTTPS en producción
 
 ### **Opción 2: Web Notifications API + setInterval**
+
 ```javascript
 function scheduleNotification(task) {
   const now = new Date();
   const dueDate = new Date(task.dueDate);
   const oneHourBefore = new Date(dueDate.getTime() - 60 * 60 * 1000);
-  
+
   if (oneHourBefore > now) {
     const timeout = oneHourBefore.getTime() - now.getTime();
     setTimeout(() => {
-      new Notification('Recordatorio de Tarea', {
+      new Notification("Recordatorio de Tarea", {
         body: `La tarea "${task.title}" vence en 1 hora`,
-        icon: '/assets/task-icon.png'
+        icon: "/assets/task-icon.png",
       });
     }, timeout);
   }
@@ -76,34 +81,39 @@ function scheduleNotification(task) {
 ```
 
 **Pros:**
+
 - Implementación más simple
 - Mejor control del timing
 - Fácil debugging
 
 **Contras:**
+
 - Solo funciona mientras la pestaña esté abierta
 - Se pierde al recargar la página
 - No es escalable para múltiples tareas
 
 ### **Opción 3: Servicio Externo (Firebase Cloud Messaging)**
+
 ```javascript
-import { getMessaging, getToken } from 'firebase/messaging';
+import { getMessaging, getToken } from "firebase/messaging";
 
 const messaging = getMessaging();
-getToken(messaging, { vapidKey: 'VAPID_KEY' }).then((currentToken) => {
+getToken(messaging, { vapidKey: "VAPID_KEY" }).then((currentToken) => {
   if (currentToken) {
-    console.log('Registration token available.');
+    console.log("Registration token available.");
     sendTokenToServer(currentToken);
   }
 });
 ```
 
 **Pros:**
+
 - Muy confiable y escalable
 - Soporte multiplataforma
 - Analytics y métricas incluidas
 
 **Contras:**
+
 - Dependencia externa
 - Costos potenciales
 - Complejidad adicional
@@ -130,11 +140,13 @@ getToken(messaging, { vapidKey: 'VAPID_KEY' }).then((currentToken) => {
 ## **Research Realizado**
 
 He revisado la documentación de:
+
 - [MDN Web Push API](https://developer.mozilla.org/en-US/docs/Web/API/Push_API)
 - [Google Web Push Protocol](https://web.dev/push-notifications/)
 - [Firebase Cloud Messaging](https://firebase.google.com/docs/cloud-messaging/js/client)
 
 También he visto estos ejemplos:
+
 - [Web Push Codelab](https://web.dev/push-notifications-web-push-protocol/)
 - [ServiceWorker Cookbook](https://serviceworke.rs/push-payload.html)
 
@@ -151,17 +163,17 @@ class TaskManager {
   }
 
   initializeNotifications() {
-    if ('Notification' in window) {
-      if (Notification.permission === 'default') {
+    if ("Notification" in window) {
+      if (Notification.permission === "default") {
         this.requestNotificationPermission();
       }
     }
   }
 
   requestNotificationPermission() {
-    Notification.requestPermission().then(permission => {
-      if (permission === 'granted') {
-        console.log('Notifications enabled');
+    Notification.requestPermission().then((permission) => {
+      if (permission === "granted") {
+        console.log("Notifications enabled");
         this.scheduleExistingTaskNotifications();
       }
     });

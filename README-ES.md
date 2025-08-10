@@ -17,6 +17,7 @@ Este proyecto fue creado específicamente para demostrar **3 workflows principal
 ## ✨ **Características Principales**
 
 ### 🎨 **Frontend**
+
 - ✅ **Interfaz moderna y responsiva** con HTML5, CSS3 y JavaScript vanilla
 - ✅ **Gestión completa de tareas** (CRUD) con filtros y búsqueda
 - ✅ **Modo oscuro/claro** con persistencia en localStorage
@@ -24,12 +25,14 @@ Este proyecto fue creado específicamente para demostrar **3 workflows principal
 - ✅ **Validación de formularios** y manejo de errores
 
 ### ⚙️ **Backend API**
+
 - ✅ **Servidor Express.js** con endpoints RESTful
 - ✅ **Middleware de seguridad** (CORS, Helmet, rate limiting)
 - ✅ **Validación de entrada** y sanitización de datos
 - ✅ **Manejo robusto de errores** y logging
 
 ### 🤖 **Automatización con Gemini CLI**
+
 - ✅ **Clasificación de Issues**: Análisis automático al crear issues
 - ✅ **Revisión de PRs**: Análisis de código en pull requests
 - ✅ **Asistente**: Respuestas contextuales con `@gemini-cli`
@@ -37,11 +40,13 @@ Este proyecto fue creado específicamente para demostrar **3 workflows principal
 ## 🚀 **Inicio Rápido**
 
 ### **Prerrequisitos**
+
 - Node.js 18+ y npm
 - Cuenta de GitHub con Actions habilitados
 - [API Key de Gemini](https://aistudio.google.com/apikey)
 
 ### **1. Configuración Local**
+
 ```bash
 # Clonar el repositorio
 git clone https://github.com/tu-usuario/taskflow-manager.git
@@ -55,12 +60,14 @@ npm start
 ```
 
 ### **2. Configuración de GitHub**
+
 1. Ve a: **Settings > Secrets and variables > Actions**
 2. Agrega: `GEMINI_API_KEY` = tu_api_key_aquí
 
 ### **3. Probar Workflows**
+
 - **Crear un issue** → Se ejecuta clasificación automática
-- **Crear un PR** → Se ejecuta revisión automática  
+- **Crear un PR** → Se ejecuta revisión automática
 - **Comentar `@gemini-cli pregunta`** → Respuesta del asistente
 
 ## 📋 **Estructura del Proyecto**
@@ -89,20 +96,24 @@ taskflow-manager/
 ### **Flujo Sugerido para Charla (60 minutos)**
 
 #### **1. Introducción (10 min)**
+
 - Mostrar la aplicación funcionando localmente
 - Explicar el propósito de los workflows de Gemini CLI
 
 #### **2. Workflow de Clasificación (15 min)**
+
 - Crear issue de ejemplo con bug
 - Mostrar clasificación automática
 - Explicar el workflow `issue-triage.yml`
 
 #### **3. Workflow de Revisión (20 min)**
+
 - Crear PR con código problemático
 - Mostrar análisis automático de Gemini
 - Explicar el workflow `pr-review.yml`
 
 #### **4. Asistente Conversacional (10 min)**
+
 - Demostrar comando `@gemini-cli`
 - Mostrar respuestas contextuales
 - Explicar el workflow `gemini-assistant.yml`
@@ -112,18 +123,23 @@ taskflow-manager/
 ## 🤖 **Comandos de Gemini CLI**
 
 ### **En Issues:**
+
 ```markdown
 @gemini-cli /clasificar
+
 # Reclasifica el issue actual
 ```
 
 ### **En Pull Requests:**
+
 ```markdown
 @gemini-cli /revisar
+
 # Solicita nueva revisión del código
 ```
 
 ### **Asistente General:**
+
 ```markdown
 @gemini-cli ¿Cómo optimizar este código JavaScript?
 @gemini-cli ¿Cuáles son las mejores prácticas para este patrón?
@@ -133,16 +149,19 @@ taskflow-manager/
 ## 🌟 **Casos de Uso Demostrados**
 
 ### **📊 Automatización de DevOps**
+
 - **Clasificación inteligente** de issues por tipo y prioridad
 - **Asignación automática** a equipos apropiados
 - **Estimación de esfuerzo** basada en análisis de contenido
 
 ### **🔍 Revisión de Código**
+
 - **Detección de bugs** y vulnerabilidades de seguridad
 - **Sugerencias de optimización** y mejores prácticas
 - **Análisis de rendimiento** y memory leaks
 
 ### **💬 Asistencia Técnica**
+
 - **Respuestas contextuales** sobre arquitectura y patrones
 - **Debugging interactivo** con análisis de errores
 - **Recomendaciones personalizadas** para el stack del proyecto
@@ -150,11 +169,13 @@ taskflow-manager/
 ## 📈 **Métricas de ROI**
 
 ### **Tiempo Ahorrado por Sprint**
+
 - **Clasificación de Issues**: 15 min → 2 min (87% reducción)
 - **Revisión de Código**: 120 min → 30 min (75% reducción)
 - **Documentación**: 45 min → 10 min (78% reducción)
 
 ### **Mejora en Calidad**
+
 - **+40%** más bugs detectados automáticamente
 - **+60%** mejor detección de vulnerabilidades
 - **+85%** consistencia en estándares de código
@@ -174,16 +195,17 @@ npm run lint
 
 ## 🔧 **Comandos Disponibles**
 
-| Comando | Descripción |
-|---------|-------------|
-| `npm start` | Inicia servidor de desarrollo |
-| `npm test` | Ejecuta suite de pruebas |
-| `npm run build` | Construye para producción |
-| `npm run lint` | Ejecuta linter de código |
+| Comando         | Descripción                   |
+| --------------- | ----------------------------- |
+| `npm start`     | Inicia servidor de desarrollo |
+| `npm test`      | Ejecuta suite de pruebas      |
+| `npm run build` | Construye para producción     |
+| `npm run lint`  | Ejecuta linter de código      |
 
 ## 🔐 **Configuración de Seguridad**
 
 ### **Variables de Entorno**
+
 ```env
 GEMINI_API_KEY=tu_api_key_aquí
 NODE_ENV=production
@@ -191,6 +213,7 @@ PORT=3000
 ```
 
 ### **GitHub Secrets Requeridos**
+
 - `GEMINI_API_KEY`: Tu clave de API de Google AI Studio
 
 ## 🤝 **Contribuir**

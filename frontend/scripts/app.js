@@ -15,7 +15,7 @@ class TaskFlowApp {
    */
   initialize() {
     // Initialize theme
-    Utils.initializeTheme();
+    this.initializeTheme();
 
     // Wait for DOM to be fully loaded
     if (document.readyState === "loading") {
@@ -60,7 +60,7 @@ class TaskFlowApp {
     // Dark mode toggle
     const darkModeToggle = document.getElementById("darkModeToggle");
     if (darkModeToggle) {
-      darkModeToggle.addEventListener("click", () => Utils.toggleTheme());
+      darkModeToggle.addEventListener("click", () => this.toggleTheme());
     }
 
     // Modal controls
@@ -148,7 +148,7 @@ class TaskFlowApp {
     if (searchInput) {
       searchInput.addEventListener(
         "input",
-        Utils.debounce(() => this.applyFilters(), 300)
+        this.debounce(() => this.applyFilters(), 300)
       );
     }
     if (sortSelect) {
@@ -205,7 +205,7 @@ class TaskFlowApp {
       this.updateStatistics();
       this.resetCharCounters();
     } else {
-      Utils.showNotification(result.error, "error");
+      this.showNotification(result.error, "error");
     }
   }
 
@@ -236,7 +236,7 @@ class TaskFlowApp {
       this.renderTasks();
       this.updateStatistics();
     } else {
-      Utils.showNotification(result.error, "error");
+      this.showNotification(result.error, "error");
     }
   }
 
@@ -331,9 +331,9 @@ class TaskFlowApp {
    * @returns {string} HTML string
    */
   createTaskHTML(task) {
-    const priorityInfo = Utils.formatPriority(task.priority);
-    const isOverdue = task.dueDate && Utils.isOverdue(task.dueDate);
-    const isDueSoon = task.dueDate && Utils.isDueSoon(task.dueDate);
+    const priorityInfo = this.formatPriority(task.priority);
+    const isOverdue = task.dueDate && this.isOverdue(task.dueDate);
+    const isDueSoon = task.dueDate && this.isDueSoon(task.dueDate);
 
     let taskClasses = "task-item";
     if (task.completed) taskClasses += " completed";
@@ -344,13 +344,13 @@ class TaskFlowApp {
     return `
       <div class="${taskClasses}" data-task-id="${task.id}">
         <div class="task-header">
-          <h3 class="task-title">${Utils.sanitizeHtml(task.title)}</h3>
+          <h3 class="task-title">${this.sanitizeHtml(task.title)}</h3>
           <div class="task-actions">
             <button class="task-action-btn complete-btn tooltip" onclick="app.toggleTaskCompletion('${
               task.id
             }')" title="${
-      task.completed ? "Mark as pending" : "Mark as completed"
-    }">
+              task.completed ? "Mark as pending" : "Mark as completed"
+            }">
               <i class="fas ${task.completed ? "fa-undo" : "fa-check"}"></i>
             </button>
             <button class="task-action-btn edit-btn tooltip" onclick="app.editTask('${
@@ -368,7 +368,7 @@ class TaskFlowApp {
         
         ${
           task.description
-            ? `<div class="task-description">${Utils.sanitizeHtml(
+            ? `<div class="task-description">${this.sanitizeHtml(
                 task.description
               )}</div>`
             : ""
@@ -382,7 +382,7 @@ class TaskFlowApp {
               isOverdue ? "overdue" : isDueSoon ? "due-soon" : ""
             }">
               <i class="fas fa-calendar-alt"></i>
-              <span>Due ${Utils.formatDate(task.dueDate)}</span>
+              <span>Vence ${this.formatDate(task.dueDate)}</span>
             </div>
           `
               : ""
@@ -390,13 +390,13 @@ class TaskFlowApp {
           
           <div class="task-priority ${task.priority}">
             <span class="priority-icon ${task.priority}">${
-      priorityInfo.icon
-    }</span>
+              priorityInfo.icon
+            }</span>
             <span>${priorityInfo.label}</span>
           </div>
           
           <div class="task-created-date">
-            Created ${Utils.formatDate(task.createdAt)}
+            Creado ${this.formatDate(task.createdAt)}
           </div>
         </div>
       </div>
@@ -421,7 +421,7 @@ class TaskFlowApp {
       this.renderTasks();
       this.updateStatistics();
     } else {
-      Utils.showNotification(result.error, "error");
+      this.showNotification(result.error, "error");
     }
   }
 
@@ -442,7 +442,7 @@ class TaskFlowApp {
         this.renderTasks();
         this.updateStatistics();
       } else {
-        Utils.showNotification(result.error, "error");
+        this.showNotification(result.error, "error");
       }
     }
   }
@@ -528,11 +528,11 @@ class TaskFlowApp {
       const filename = `taskflow-export-${
         new Date().toISOString().split("T")[0]
       }.csv`;
-      Utils.downloadFile(csvContent, filename, "text/csv");
-      Utils.showNotification("Tasks exported successfully!", "success");
+      this.downloadFile(csvContent, filename, "text/csv");
+      this.showNotification("¡Tareas exportadas exitosamente!", "success");
     } catch (error) {
       console.error("Export error:", error);
-      Utils.showNotification("Failed to export tasks", "error");
+      this.showNotification("Error al exportar tareas", "error");
     }
   }
 
@@ -587,6 +587,120 @@ class TaskFlowApp {
         document.body.style.overflow = "";
       }
     });
+  }
+
+  // Utility methods to replace Utils dependency
+  initializeTheme() {
+    const theme = localStorage.getItem("theme") || "light";
+    document.documentElement.setAttribute("data-theme", theme);
+  }
+
+  toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute("data-theme");
+    const newTheme = currentTheme === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", newTheme);
+    localStorage.setItem("theme", newTheme);
+  }
+
+  formatDate(date) {
+    if (!date) return "";
+    const dateObj = new Date(date);
+    if (isNaN(dateObj.getTime())) return "";
+
+    const today = new Date();
+    const diffTime = dateObj.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return "Hoy";
+    if (diffDays === 1) return "Mañana";
+    if (diffDays === -1) return "Ayer";
+    if (diffDays > 1 && diffDays <= 7) return `En ${diffDays} días`;
+    if (diffDays < -1 && diffDays >= -7)
+      return `Hace ${Math.abs(diffDays)} días`;
+
+    return dateObj.toLocaleDateString("es-ES", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  }
+
+  formatPriority(priority) {
+    const priorities = {
+      critical: { label: "Crítica", color: "#ff4757" },
+      high: { label: "Alta", color: "#ff6b35" },
+      medium: { label: "Media", color: "#f39c12" },
+      low: { label: "Baja", color: "#27ae60" },
+    };
+    return priorities[priority] || priorities.medium;
+  }
+
+  isOverdue(date) {
+    if (!date) return false;
+    return new Date(date) < new Date();
+  }
+
+  isDueSoon(date, days = 3) {
+    if (!date) return false;
+    const dueDate = new Date(date);
+    const today = new Date();
+    const diffTime = dueDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 && diffDays <= days;
+  }
+
+  sanitizeHtml(str) {
+    if (typeof str !== "string") return "";
+    return str.replace(/[<>]/g, "");
+  }
+
+  debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout);
+        func(...args);
+      };
+      clearTimeout(timeout);
+      timeout = setTimeout(later, wait);
+    };
+  }
+
+  showNotification(message, type = "info") {
+    // Simple notification system
+    const notification = document.createElement("div");
+    notification.className = `notification notification-${type}`;
+    notification.textContent = message;
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      background: ${type === "error" ? "#ff4757" : type === "success" ? "#2ed573" : "#5352ed"};
+      color: white;
+      border-radius: 8px;
+      z-index: 10000;
+      animation: slideIn 0.3s ease;
+    `;
+
+    document.body.appendChild(notification);
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.parentNode.removeChild(notification);
+      }
+    }, 3000);
+  }
+
+  downloadFile(content, filename, mimeType) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 }
 

@@ -38,6 +38,7 @@ La aplicación TaskFlow Manager se vuelve lenta y eventualmente se bloquea cuand
 ## **Información Adicional**
 
 ### **Consola del Navegador**
+
 ```
 [Error] Possible memory leak detected in task rendering
 [Warning] DOM manipulation taking longer than expected
@@ -45,6 +46,7 @@ La aplicación TaskFlow Manager se vuelve lenta y eventualmente se bloquea cuand
 ```
 
 ### **Performance Profile**
+
 - Heap Size aumenta exponencialmente después de 10 tareas
 - CPU usage al 90%+ durante operaciones de renderizado
 - Múltiples reflows del DOM detectados
