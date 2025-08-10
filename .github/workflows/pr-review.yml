@@ -1,147 +1,117 @@
-name: � Revisión de PR con Gemini CLI
+name: Gemini CLI - Revisión de PR
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
+    types: [opened, reopened, synchronize]
   pull_request_review_comment:
     types: [created]
   issue_comment:
     types: [created]
-
-permissions:
-  contents: read
-  pull-requests: write
-  issues: write
+  workflow_dispatch:
+    inputs:
+      pr_number:
+        description: "Número del PR a revisar"
+        required: false
+        type: string
 
 jobs:
   review:
+    name: Revisar PR con Gemini
     runs-on: ubuntu-latest
-    if: >
-      (github.event_name == 'pull_request') ||
+
+    # Solo ejecutar en PRs o cuando se solicite específicamente
+    if: >-
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request_review_comment' && 
+       contains(github.event.comment.body, '@gemini-cli') && 
+       contains(github.event.comment.body, '/revisar')) ||
       (github.event_name == 'issue_comment' && 
        github.event.issue.pull_request &&
        contains(github.event.comment.body, '@gemini-cli') && 
        contains(github.event.comment.body, '/revisar'))
 
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+
     steps:
-      - name: Descargar repositorio
-        uses: actions/checkout@v4
+      - name: Ejecutar Gemini CLI para Revisión
+        uses: google-github-actions/run-gemini-cli@v0.1.10
         with:
-          fetch-depth: 0
-
-      - name: Obtener diferencias del PR
-        id: pr_diff
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            PR_NUMBER=${{ github.event.pull_request.number }}
-          else
-            PR_NUMBER=${{ github.event.issue.number }}
-          fi
-
-          # Obtener el diff del PR
-          gh pr diff $PR_NUMBER > pr_diff.txt || echo "No se pudo obtener el diff"
-
-          # Truncar si es muy grande (límites de la API de GitHub)
-          if [ -f pr_diff.txt ]; then
-            head -n 200 pr_diff.txt > pr_diff_truncated.txt
-            mv pr_diff_truncated.txt pr_diff.txt
-          fi
-        env:
-          GH_TOKEN: ${{ github.token }}
-
-      - name: 🤖 Ejecutar Gemini CLI para Revisión de PR
-        id: gemini_review
-        uses: google-github-actions/run-gemini-cli@v0
-        with:
-          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
           prompt: |
-            Eres un experto revisor de código para el proyecto TaskFlow Manager.
+            Eres un revisor de código experto y experimentado.
 
-            CONTEXTO: Esta es una aplicación web de gestión de tareas con:
-            - Frontend: HTML, CSS, JavaScript vanilla
-            - Backend: Node.js con Express
-            - Enfoque en código limpio y mantenible
+            Tu tarea es realizar una revisión exhaustiva del Pull Request, enfocándote en:
 
-            TAREA: Revisa los siguientes cambios del pull request.
+            🔒 **Seguridad**: Vulnerabilidades, validación de entrada, autenticación
+            ⚡ **Rendimiento**: Algoritmos eficientes, consultas optimizadas, uso de memoria
+            🛡️ **Confiabilidad**: Manejo de errores, casos edge, testing
+            🧹 **Mantenibilidad**: Código limpio, documentación, convenciones
+            ✅ **Funcionalidad**: Lógica correcta, cumplimiento de requisitos
 
-            Título del PR: ${{ github.event.pull_request.title || 'Solicitud de Revisión Manual' }}
-            Descripción del PR: ${{ github.event.pull_request.body || 'Sin descripción proporcionada' }}
-            Autor del PR: ${{ github.event.pull_request.user.login || github.event.comment.user.login }}
+            Proporciona feedback específico usando estos emojis de prioridad:
+            🔴 **Crítico**: Debe corregirse antes del merge
+            🟠 **Alto**: Debería corregirse
+            🟡 **Medio**: Mejoras recomendadas
+            🟢 **Bajo**: Sugerencias opcionales
 
-            CAMBIOS EN EL CÓDIGO:
-            ```diff
-            $(cat pr_diff.txt 2>/dev/null || echo "No hay diff disponible")
-            ```
+            **Formato de respuesta**:
 
-            CRITERIOS DE REVISIÓN:
-            1. **Calidad del Código**: Verificar código limpio y legible
-            2. **Seguridad**: Buscar vulnerabilidades potenciales
-            3. **Rendimiento**: Identificar oportunidades de optimización
-            4. **Mejores Prácticas**: Asegurar seguimiento de convenciones JavaScript/Node.js
-            5. **Testing**: Sugerir mejoras en cobertura de pruebas
-            6. **Documentación**: Verificar si el código es autodocumentado
+            ## 🔍 Revisión de Código
 
-            ÁREAS ESPECÍFICAS A REVISAR:
-            - Validación y sanitización de entrada
-            - Manejo de errores
-            - Memory leaks o problemas de rendimiento
-            - Uso apropiado de async/await
-            - Organización y estructura del código
-            - Mejores prácticas de seguridad
+            ### ✅ Aspectos Positivos
+            - [Destacar buenas prácticas encontradas]
 
-            FORMATO DE RESPUESTA:
-            ## 🔍 Resumen de Revisión de Código
+            ### 🔍 Análisis por Categoría
 
-            **Evaluación General:** [Aprobar/Solicitar Cambios/Comentar]
-            **Puntuación de Calidad:** [1-10]
+            #### 🔒 Seguridad
+            [Evaluación de seguridad]
 
-            ### ✅ Fortalezas
-            - Punto 1
-            - Punto 2
+            #### ⚡ Rendimiento  
+            [Evaluación de rendimiento]
 
-            ### ⚠️ Problemas Encontrados
-            **Alta Prioridad:**
-            - Problema 1 (línea X)
-            - Problema 2 (línea Y)
+            #### 🛡️ Confiabilidad
+            [Evaluación de confiabilidad]
 
-            **Prioridad Media:**
-            - Problema 3
-            - Problema 4
+            #### 🧹 Mantenibilidad
+            [Evaluación de mantenibilidad]
 
-            **Baja Prioridad/Sugerencias:**
-            - Sugerencia 1
-            - Sugerencia 2
+            ### 📋 Recomendaciones
 
-            ### 🚀 Oportunidades de Optimización
-            - Optimización 1
-            - Optimización 2
+            #### 🔴 Críticas
+            - [Issues que deben corregirse]
 
-            ### 🧪 Recomendaciones de Testing
-            - Caso de prueba 1
-            - Caso de prueba 2
+            #### 🟠 Importantes
+            - [Mejoras recomendadas]
 
-            ### 📚 Sugerencias de Documentación
-            - Mejora de documentación 1
-            - Mejora de documentación 2
+            #### 🟡 Sugerencias
+            - [Mejoras opcionales]
 
-            ---
-            **Próximos Pasos:** [Acciones específicas que el autor debe tomar]
+            ### 🎯 Veredicto
+            - [ ] ✅ Aprobado - Listo para merge
+            - [ ] 🔄 Necesita cambios menores
+            - [ ] ⛔ Requiere cambios importantes
 
-      - name: 📝 Publicar Comentario de Revisión
+            Responde en español, sé constructivo y proporciona ejemplos de código cuando sea útil.
+
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Comentar si hay error
+        if: failure()
         uses: actions/github-script@v7
         with:
           script: |
-            const prNumber = context.issue.number || context.payload.pull_request.number;
-            const reviewBody = `${{ steps.gemini_review.outputs.summary }}
-
-            ---
-            🤖 *Esta revisión fue realizada automáticamente por Gemini CLI*
-            💡 *Para revisión manual, comenta: \`@gemini-cli /revisar\`*
-            📋 *Revisión basada en estándares de código de TaskFlow Manager*`;
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: prNumber,
-              body: reviewBody
-            });
+            const prNumber = context.payload.pull_request?.number || 
+                           context.payload.inputs?.pr_number ||
+                           (context.payload.issue?.pull_request ? context.payload.issue.number : null);
+                           
+            if (prNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: '❌ Error al revisar el PR. [Ver logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})'
+              });
+            }

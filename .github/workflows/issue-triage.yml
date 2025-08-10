@@ -1,102 +1,106 @@
-name: Clasificación de Issues con Gemini CLI
+name: Gemini CLI - Clasificación de Issues
 
 on:
   issues:
-    types: [opened, edited]
+    types: [opened, edited, reopened]
   issue_comment:
     types: [created]
-
-permissions:
-  contents: read
-  issues: write
-  pull-requests: write
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: "Número del issue a clasificar"
+        required: false
+        type: string
 
 jobs:
   triage:
+    name: Clasificar Issue con Gemini
     runs-on: ubuntu-latest
-    if: >
-      (github.event_name == 'issues') ||
+
+    # Solo ejecutar en issues nuevos o cuando se solicite específicamente
+    if: >-
+      github.event_name == 'issues' ||
+      github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' && 
        contains(github.event.comment.body, '@gemini-cli') && 
        contains(github.event.comment.body, '/clasificar'))
 
+    permissions:
+      contents: read
+      issues: write
+
     steps:
-      - name: Descargar repositorio
-        uses: actions/checkout@v4
+      - name: Ejecutar Gemini CLI para Clasificación
+        uses: google-github-actions/run-gemini-cli@v0.1.10
+        with:
+          prompt: |
+            Eres un experto en gestión de proyectos y clasificación de issues de software.
 
-      - name: Obtener contexto del issue
-        id: context
-        run: |
-          if [ "${{ github.event_name }}" = "issues" ]; then
-            echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
-            echo "issue_title=${{ github.event.issue.title }}" >> $GITHUB_OUTPUT
-            echo "issue_author=${{ github.event.issue.user.login }}" >> $GITHUB_OUTPUT
-          else
-            echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
-            echo "issue_title=${{ github.event.issue.title }}" >> $GITHUB_OUTPUT
-            echo "issue_author=${{ github.event.issue.user.login }}" >> $GITHUB_OUTPUT
-          fi
+            Tu tarea es analizar el siguiente issue y:
 
-      - name: Ejecutar API de Gemini
-        id: gemini
-        run: |
-          PROMPT="Eres un experto gerente de proyectos y clasificador de issues para el proyecto TaskFlow Manager.
+            1. **Categorizar** el tipo de issue:
+               - `bug` - Errores o fallos
+               - `feature` - Nuevas funcionalidades
+               - `enhancement` - Mejoras a funcionalidad existente
+               - `documentation` - Relacionado con documentación
+               - `question` - Preguntas o consultas
+               - `maintenance` - Tareas de mantenimiento
+               - `security` - Problemas de seguridad
 
-          CONTEXTO: Esta es una aplicación web de gestión de tareas construida con Node.js y JavaScript vanilla.
+            2. **Determinar prioridad**:
+               - `priority-critical` - Crítico, bloquea funcionalidad principal
+               - `priority-high` - Alto, impacta usuarios importantes
+               - `priority-medium` - Medio, mejora experiencia
+               - `priority-low` - Bajo, mejora menor
 
-          TAREA: Analiza el siguiente issue de GitHub y proporciona recomendaciones de clasificación.
+            3. **Evaluar complejidad**:
+               - `complexity-simple` - Solución directa, pocas horas
+               - `complexity-medium` - Requiere análisis, días
+               - `complexity-complex` - Cambios arquitectónicos, semanas
 
-          Título del Issue: ${{ github.event.issue.title }}
-          Contenido del Issue: ${{ github.event.issue.body }}
-          Autor del Issue: ${{ github.event.issue.user.login }}
+            4. **Identificar área**:
+               - `area-frontend` - Interfaz de usuario
+               - `area-backend` - Lógica del servidor
+               - `area-database` - Base de datos
+               - `area-api` - APIs y servicios
+               - `area-devops` - Infraestructura y despliegue
+               - `area-testing` - Pruebas y QA
 
-          CRITERIOS DE CLASIFICACIÓN:
-          1. Clasificación: Determina si es un bug, solicitud de función, pregunta o issue de documentación
-          2. Prioridad: Asigna prioridad (baja, media, alta, crítica)
-          3. Etiquetas: Sugiere etiquetas apropiadas
-          4. Equipo: Sugiere equipo (frontend, backend, documentación)
-          5. Esfuerzo: Proporciona estimación aproximada (1-5 story points)
+            **Formato de respuesta**:
 
-          FORMATO DE RESPUESTA:
-          Clasificación: [bug/mejora/pregunta/documentación]
-          Prioridad: [baja/media/alta/crítica]
-          Esfuerzo Estimado: [1-5 story points]
-          Equipo: [frontend/backend/documentación/cualquiera]
-          Etiquetas Sugeridas: etiqueta1, etiqueta2, etiqueta3
-          Análisis: Breve explicación del issue y razonamiento
-          Próximos Pasos: 1. Paso uno 2. Paso dos"
+            ## 🏷️ Clasificación Automática
 
-          RESPONSE=$(curl -s -H "Content-Type: application/json" \
-            -H "x-goog-api-key: ${{ secrets.GEMINI_API_KEY }}" \
-            -d "{
-              \"contents\": [{
-                \"parts\": [{
-                  \"text\": \"$PROMPT\"
-                }]
-              }]
-            }" \
-            "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent")
+            **Tipo**: [tipo]
+            **Prioridad**: [prioridad]  
+            **Complejidad**: [complejidad]
+            **Área**: [área]
 
-          RESULT=$(echo "$RESPONSE" | jq -r '.candidates[0].content.parts[0].text // "Error: No se pudo procesar la clasificación"')
+            ## 📋 Análisis
 
-          echo "$RESULT" > resultado_clasificacion.txt
-          echo "response_file=resultado_clasificacion.txt" >> $GITHUB_OUTPUT
+            [Breve explicación del issue y razón de la clasificación]
 
-      - name: Publicar comentario de clasificación
+            ## 🎯 Recomendaciones
+
+            - [Sugerencia 1]
+            - [Sugerencia 2]
+
+            Responde siempre en español y sé específico en tu análisis.
+
+          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Comentar si hay error
+        if: failure()
         uses: actions/github-script@v7
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const fs = require('fs');
-            const resultadoClasificacion = fs.readFileSync('resultado_clasificacion.txt', 'utf8');
-
-            const comentario = '## 🤖 Análisis de Clasificación Gemini CLI\n\n' + 
-                                resultadoClasificacion + 
-                                '\n\n---\n🤖 *Esta clasificación fue realizada automáticamente por Gemini CLI*\n💡 *Para re-clasificar manualmente, comenta: `@gemini-cli /clasificar`*';
-
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: ${{ steps.context.outputs.issue_number }},
-              body: comentario
-            });
+            const issueNumber = context.payload.issue?.number || 
+                              context.payload.inputs?.issue_number;
+                              
+            if (issueNumber) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: '❌ Error al clasificar el issue. [Ver logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})'
+              });
+            }
