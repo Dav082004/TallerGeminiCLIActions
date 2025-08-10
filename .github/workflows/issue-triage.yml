@@ -40,7 +40,7 @@ jobs:
             **ISSUE A ANALIZAR:**
             Título: ${{ github.event.issue.title }}
             Descripción: ${{ github.event.issue.body }}
-            
+
             Tu tarea es analizar el siguiente issue y:
 
             1. **Categorizar** el tipo de issue:
@@ -102,16 +102,47 @@ jobs:
           script: |
             const issueNumber = context.payload.issue?.number || 
                               context.payload.inputs?.issue_number;
-            
+
             if (issueNumber) {
               const geminiResponse = process.env.GEMINI_RESPONSE || 'No se pudo obtener la respuesta de Gemini.';
               
+              // Comentar la clasificación
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issueNumber,
                 body: `🤖 **Clasificación Automática por Gemini CLI**\n\n${geminiResponse}`
               });
+              
+              // Extraer y aplicar labels automáticamente
+              const labels = [];
+              
+              // Buscar patrones de labels en la respuesta
+              const typeMatch = geminiResponse.match(/\*\*Tipo\*\*:\s*`?([^`\n]*)`?/);
+              const priorityMatch = geminiResponse.match(/\*\*Prioridad\*\*:\s*`?([^`\n]*)`?/);
+              const complexityMatch = geminiResponse.match(/\*\*Complejidad\*\*:\s*`?([^`\n]*)`?/);
+              const areaMatch = geminiResponse.match(/\*\*Área\*\*:\s*`?([^`\n]*)`?/);
+              
+              if (typeMatch) labels.push(typeMatch[1].trim());
+              if (priorityMatch) labels.push(priorityMatch[1].trim());
+              if (complexityMatch) labels.push(complexityMatch[1].trim());
+              if (areaMatch) {
+                // Manejar múltiples áreas separadas por comas
+                const areas = areaMatch[1].split(',').map(area => area.trim().replace(/`/g, ''));
+                labels.push(...areas);
+              }
+              
+              // Aplicar labels al issue
+              if (labels.length > 0) {
+                await github.rest.issues.addLabels({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  issue_number: issueNumber,
+                  labels: labels
+                });
+                
+                console.log(`Labels aplicados: ${labels.join(', ')}`);
+              }
             }
 
       - name: Comentar si hay error
