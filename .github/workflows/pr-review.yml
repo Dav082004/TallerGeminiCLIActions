@@ -38,11 +38,16 @@ jobs:
 
     steps:
       - name: Ejecutar Gemini CLI para Revisión
+        id: gemini-review
         uses: google-github-actions/run-gemini-cli@v0.1.10
         with:
           prompt: |
             Eres un revisor de código experto y experimentado.
 
+            **PULL REQUEST A REVISAR:**
+            Título: ${{ github.event.pull_request.title || 'PR desde comentario' }}
+            Descripción: ${{ github.event.pull_request.body || 'Ver comentarios para contexto' }}
+            
             Tu tarea es realizar una revisión exhaustiva del Pull Request, enfocándote en:
 
             🔒 **Seguridad**: Vulnerabilidades, validación de entrada, autenticación
@@ -97,6 +102,31 @@ jobs:
             Responde en español, sé constructivo y proporciona ejemplos de código cuando sea útil.
 
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Comentar revisión en el PR
+        if: success()
+        uses: actions/github-script@v7
+        env:
+          GEMINI_RESPONSE: ${{ steps.gemini-review.outputs.summary }}
+        with:
+          script: |
+            const prNumber = context.payload.pull_request?.number || 
+                           context.payload.inputs?.pr_number ||
+                           (context.payload.issue?.pull_request ? context.payload.issue.number : null);
+
+            if (prNumber) {
+              const geminiResponse = process.env.GEMINI_RESPONSE || 'No se pudo obtener la respuesta de Gemini.';
+              
+              // Comentar la revisión
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: `🤖 **Revisión Automática por Gemini CLI**\n\n${geminiResponse}`
+              });
+              
+              console.log(`Revisión comentada en PR #${prNumber}`);
+            }
 
       - name: Comentar si hay error
         if: failure()
