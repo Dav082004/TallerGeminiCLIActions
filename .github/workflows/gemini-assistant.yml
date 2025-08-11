@@ -26,12 +26,12 @@ jobs:
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' && 
        contains(github.event.comment.body, '@gemini-cli') && 
-       !contains(github.event.comment.body, '/clasificar') &&
-       !contains(github.event.comment.body, '/revisar')) ||
+       !contains(github.event.comment.body, '/triage') &&
+       !contains(github.event.comment.body, '/review')) ||
       (github.event_name == 'pull_request_review_comment' && 
        contains(github.event.comment.body, '@gemini-cli') && 
-       !contains(github.event.comment.body, '/clasificar') &&
-       !contains(github.event.comment.body, '/revisar'))
+       !contains(github.event.comment.body, '/triage') &&
+       !contains(github.event.comment.body, '/review'))
 
     permissions:
       contents: read

@@ -17,13 +17,12 @@ jobs:
     name: Clasificar Issue con Gemini
     runs-on: ubuntu-latest
 
-    # Solo ejecutar en issues nuevos o cuando se solicite específicamente con /clasificar
+    # Solo ejecutar cuando se solicite específicamente con /triage
     if: >-
-      github.event_name == 'issues' ||
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' && 
        contains(github.event.comment.body, '@gemini-cli') && 
-       contains(github.event.comment.body, '/clasificar'))
+       contains(github.event.comment.body, '/triage'))
 
     permissions:
       contents: read
