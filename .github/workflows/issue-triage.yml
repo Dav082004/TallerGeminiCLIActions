@@ -30,6 +30,13 @@ jobs:
       issues: write
 
     steps:
+      - name: Generate GitHub App Token
+        id: github-app
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ vars.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          
       - name: Ejecutar Gemini CLI para Clasificación
         id: gemini-analysis
         uses: google-github-actions/run-gemini-cli@v0.1.10
@@ -99,6 +106,7 @@ jobs:
         env:
           GEMINI_RESPONSE: ${{ steps.gemini-analysis.outputs.summary }}
         with:
+          github-token: ${{ steps.github-app.outputs.token || github.token }}
           script: |
             const issueNumber = context.payload.issue?.number || 
                               context.payload.inputs?.issue_number;
