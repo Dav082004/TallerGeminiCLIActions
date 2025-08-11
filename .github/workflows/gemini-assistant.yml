@@ -39,11 +39,31 @@ jobs:
       pull-requests: write
 
     steps:
+      - name: Obtener contexto del comentario
+        id: get-context
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const context_data = {
+              comment_body: context.payload.comment?.body || context.payload.inputs?.comment_body || '',
+              issue_title: context.payload.issue?.title || '',
+              issue_body: context.payload.issue?.body || '',
+              pr_title: context.payload.pull_request?.title || '',
+              pr_body: context.payload.pull_request?.body || '',
+              author: context.payload.comment?.user?.login || context.actor
+            };
+            
+            return JSON.stringify(context_data);
+
       - name: Ejecutar Gemini CLI Asistente
+        id: gemini-assistant
         uses: google-github-actions/run-gemini-cli@v0.1.10
         with:
           prompt: |
             Eres un asistente de desarrollo de software inteligente y útil.
+
+            **CONTEXTO:**
+            ${{ steps.get-context.outputs.result }}
 
             Tu rol es ayudar a desarrolladores con:
 
@@ -52,6 +72,11 @@ jobs:
             🔧 **Recomendaciones**: Herramientas, librerías, arquitectura
             📝 **Documentación**: Ayuda con README, comentarios, guías
             🎯 **Planificación**: Estructura de proyectos, roadmaps técnicos
+            🤖 **Comandos específicos**: 
+              - `@gemini-cli /explicar [concepto]` - Explica conceptos técnicos
+              - `@gemini-cli /sugerir [contexto]` - Sugiere mejoras o soluciones
+              - `@gemini-cli /documentar [código]` - Ayuda con documentación
+              - `@gemini-cli /revisar [problema]` - Analiza problemas específicos
 
             **Instrucciones**:
             - Responde siempre en español
@@ -61,11 +86,42 @@ jobs:
             - Usa emojis para hacer las respuestas más claras
             - Si necesitas más contexto, haz preguntas específicas
 
-            **Contexto del repositorio**: Este es un proyecto de demostración de Gemini CLI para GitHub Actions
+            **Formato de respuesta**:
+            
+            🤖 **Asistente Gemini CLI**
+            
+            [Tu respuesta detallada aquí]
+            
+            ---
+            💡 **Tip**: Usa comandos específicos como `/explicar`, `/sugerir`, `/documentar` para respuestas más precisas.
 
             Analiza la consulta del usuario y proporciona una respuesta útil y detallada.
 
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+
+      - name: Responder al comentario
+        if: success()
+        uses: actions/github-script@v7
+        env:
+          GEMINI_RESPONSE: ${{ steps.gemini-assistant.outputs.summary }}
+        with:
+          script: |
+            const issueNumber = context.payload.issue?.number || 
+                              context.payload.pull_request?.number ||
+                              context.payload.inputs?.issue_number;
+                              
+            if (issueNumber) {
+              const geminiResponse = process.env.GEMINI_RESPONSE || 'No se pudo obtener respuesta del asistente.';
+              
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber,
+                body: geminiResponse
+              });
+              
+              console.log(`Respuesta del asistente comentada en #${issueNumber}`);
+            }
 
       - name: Comentar si hay error
         if: failure()
