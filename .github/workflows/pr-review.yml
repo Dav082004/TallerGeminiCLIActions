@@ -37,6 +37,49 @@ jobs:
       issues: write
 
     steps:
+      - name: Checkout del código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Obtener diff del PR
+        id: get-diff
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request?.number || 
+                           context.payload.inputs?.pr_number ||
+                           (context.payload.issue?.pull_request ? context.payload.issue.number : null);
+            
+            if (prNumber) {
+              try {
+                const { data: files } = await github.rest.pulls.listFiles({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  pull_number: prNumber
+                });
+                
+                let diffContent = "**ARCHIVOS MODIFICADOS:**\n\n";
+                
+                for (const file of files.slice(0, 10)) { // Limitar a 10 archivos
+                  diffContent += `### 📄 ${file.filename}\n`;
+                  diffContent += `**Estado**: ${file.status}\n`;
+                  diffContent += `**Cambios**: +${file.additions} -${file.deletions}\n\n`;
+                  
+                  if (file.patch) {
+                    diffContent += "```diff\n";
+                    diffContent += file.patch.substring(0, 2000); // Limitar tamaño
+                    diffContent += "\n```\n\n";
+                  }
+                }
+                
+                return diffContent;
+              } catch (error) {
+                return "❌ Error obteniendo diff del PR: " + error.message;
+              }
+            }
+            return "❌ No se pudo determinar el número del PR";
+
       - name: Ejecutar Gemini CLI para Revisión
         id: gemini-review
         uses: google-github-actions/run-gemini-cli@v0.1.10
@@ -48,6 +91,9 @@ jobs:
             Título: ${{ github.event.pull_request.title || 'PR desde comentario' }}
             Descripción: ${{ github.event.pull_request.body || 'Ver comentarios para contexto' }}
             
+            **CÓDIGO DEL PR:**
+            ${{ steps.get-diff.outputs.result }}
+
             Tu tarea es realizar una revisión exhaustiva del Pull Request, enfocándote en:
 
             🔒 **Seguridad**: Vulnerabilidades, validación de entrada, autenticación
