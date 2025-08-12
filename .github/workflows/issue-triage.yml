@@ -17,11 +17,12 @@ jobs:
     name: Clasificar Issue con Gemini
     runs-on: ubuntu-latest
 
-    # Ejecutar automáticamente en nuevos issues o manualmente con /triage
+    # Ejecutar solo: 1) automáticamente en nuevos issues, 2) manualmente con /triage
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issues' && github.event.action == 'opened') ||
       (github.event_name == 'issue_comment' && 
+       github.event.issue != null &&
        contains(github.event.comment.body, '@gemini-cli') && 
        contains(github.event.comment.body, '/triage'))
 

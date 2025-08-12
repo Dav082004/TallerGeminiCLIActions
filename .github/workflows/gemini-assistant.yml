@@ -21,7 +21,7 @@ jobs:
     name: Asistente Gemini
     runs-on: ubuntu-latest
 
-    # Solo ejecutar cuando se mencione @gemini-cli sin comandos específicos
+    # Solo ejecutar cuando se mencione @gemini-cli SIN comandos específicos (/triage, /review)
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' && 

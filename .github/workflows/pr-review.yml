@@ -19,7 +19,7 @@ jobs:
     name: Revisar PR con Gemini
     runs-on: ubuntu-latest
 
-    # Solo ejecutar en PRs o cuando se solicite específicamente
+    # Solo ejecutar: 1) PRs automáticamente, 2) manualmente con /review en PRs
     if: >-
       github.event_name == 'pull_request' ||
       github.event_name == 'workflow_dispatch' ||
@@ -27,7 +27,7 @@ jobs:
        contains(github.event.comment.body, '@gemini-cli') && 
        contains(github.event.comment.body, '/review')) ||
       (github.event_name == 'issue_comment' && 
-       github.event.issue.pull_request &&
+       github.event.issue.pull_request != null &&
        contains(github.event.comment.body, '@gemini-cli') && 
        contains(github.event.comment.body, '/review'))
 
