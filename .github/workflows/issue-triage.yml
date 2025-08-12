@@ -17,9 +17,10 @@ jobs:
     name: Clasificar Issue con Gemini
     runs-on: ubuntu-latest
 
-    # Solo ejecutar cuando se solicite específicamente con /triage
+    # Ejecutar automáticamente en nuevos issues o manualmente con /triage
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'issues' && github.event.action == 'opened') ||
       (github.event_name == 'issue_comment' && 
        contains(github.event.comment.body, '@gemini-cli') && 
        contains(github.event.comment.body, '/triage'))
@@ -29,6 +30,43 @@ jobs:
       issues: write
 
     steps:
+      - name: Obtener información del issue
+        id: get-issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            let issueNumber;
+            let issueData;
+            
+            if (context.eventName === 'issues') {
+              // Issue creado directamente
+              issueNumber = context.issue.number;
+              issueData = context.payload.issue;
+            } else if (context.eventName === 'issue_comment') {
+              // Comentario en issue
+              issueNumber = context.issue.number;
+              const { data: issue } = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber
+              });
+              issueData = issue;
+            } else if (context.eventName === 'workflow_dispatch') {
+              // Ejecución manual
+              issueNumber = context.payload.inputs.issue_number || context.issue.number;
+              const { data: issue } = await github.rest.issues.get({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issueNumber
+              });
+              issueData = issue;
+            }
+            
+            core.setOutput('issue_number', issueNumber);
+            core.setOutput('issue_title', issueData.title);
+            core.setOutput('issue_body', issueData.body);
+            core.setOutput('issue_url', issueData.html_url);
+
       - name: Ejecutar Gemini CLI para Clasificación
         id: gemini-analysis
         uses: google-github-actions/run-gemini-cli@v0.1.10
@@ -37,8 +75,8 @@ jobs:
             Eres un experto en gestión de proyectos y clasificación de issues de software.
 
             **ISSUE A ANALIZAR:**
-            Título: ${{ github.event.issue.title }}
-            Descripción: ${{ github.event.issue.body }}
+            Título: ${{ steps.get-issue.outputs.issue_title }}
+            Descripción: ${{ steps.get-issue.outputs.issue_body }}
 
             Tu tarea es analizar el siguiente issue y:
 
@@ -99,8 +137,7 @@ jobs:
           GEMINI_RESPONSE: ${{ steps.gemini-analysis.outputs.summary }}
         with:
           script: |
-            const issueNumber = context.payload.issue?.number || 
-                              context.payload.inputs?.issue_number;
+            const issueNumber = ${{ steps.get-issue.outputs.issue_number }};
 
             if (issueNumber) {
               const geminiResponse = process.env.GEMINI_RESPONSE || 'No se pudo obtener la respuesta de Gemini.';
@@ -149,8 +186,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const issueNumber = context.payload.issue?.number || 
-                              context.payload.inputs?.issue_number;
+            const issueNumber = ${{ steps.get-issue.outputs.issue_number }};
                               
             if (issueNumber) {
               await github.rest.issues.createComment({
