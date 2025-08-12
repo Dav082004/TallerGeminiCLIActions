@@ -34,11 +34,10 @@ GeminiCLIProject/
 │       ├── main.css                # Estilos principales
 │       └── components.css          # Estilos de componentes
 │
-├── 📚 docs/                        # 📖 DOCUMENTACIÓN DETALLADA
+├── 📚 docs/                          # 📖 DOCUMENTACIÓN DETALLADA
 │   ├── workflow-issue-triage.md    # Explicación técnica workflow 1
 │   ├── workflow-pr-review.md       # Explicación técnica workflow 2
 │   ├── workflow-gemini-assistant.md # Explicación técnica workflow 3
-│   ├── GITHUB-APP-SETUP.md         # Configuración de GitHub App
 │   └── WORKFLOWS-ES.md             # Resumen de workflows en español
 │
 └── 🧪 tests/                       # 🔍 TESTING
