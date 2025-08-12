@@ -3,6 +3,7 @@
 [![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-Powered-blue)](https://github.com/google-github-actions/run-gemini-cli)
 [![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-Automated-green)](https://github.com/features/actions)
 [![Workshop](https://img.shields.io/badge/Workshop-Ready-orange)](https://github.com/tu-usuario/GeminiCLIProject)
+[![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > **Demostración educativa completa de 3 workflows de GitHub Actions utilizando Gemini CLI para automatizar tareas de desarrollo con inteligencia artificial**
 
@@ -203,6 +204,8 @@ Una **aplicación web completa** de gestión de tareas desarrollada en JavaScrip
 5. Abrir Pull Request (¡será revisado por Gemini! 🤖)
 
 ## 📄 Licencia
+
+Este proyecto está licenciado bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
 
 MIT License - Úsalo libremente para workshops, capacitaciones y proyectos comerciales.
 
