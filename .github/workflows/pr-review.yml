@@ -1,4 +1,4 @@
-name: Gemini CLI - Revisión de PR
+name: 🧐 Gemini CLI - PR Review
 
 on:
   pull_request:

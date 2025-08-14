@@ -1,4 +1,4 @@
-name: Gemini CLI - Clasificación de Issues
+name: 🏷️ Gemini CLI - Clasificación de Issues
 
 on:
   issues:
