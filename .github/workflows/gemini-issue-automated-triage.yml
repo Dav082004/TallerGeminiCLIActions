@@ -1,5 +1,9 @@
 name: 🏷️ Gemini CLI - Clasificación de Issues
 
+# Este workflow usa Gemini CLI para clasificar issues automáticamente.
+# - Disparadores: creación/edición/reapertura de issues, comentarios y ejecución manual.
+# - Objetivo: analizar el contenido del issue y proponer labels, prioridad y recomendaciones.
+
 on:
   issues:
     types: [opened, edited, reopened]
@@ -17,7 +21,7 @@ jobs:
     name: Clasificar Issue con Gemini
     runs-on: ubuntu-latest
 
-    # Ejecutar solo: 1) automáticamente en nuevos issues, 2) manualmente con /triage
+  # Ejecutar solo: 1) automáticamente en nuevos issues, 2) manualmente con /triage
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issues' && github.event.action == 'opened') ||
@@ -30,8 +34,14 @@ jobs:
       contents: read
       issues: write
 
+  # Permisos explicados:
+  # - contents:read -> permitido leer archivos del repositorio si es necesario para contexto.
+  # - issues:write  -> necesario para publicar comentarios y aplicar labels al issue.
+
     steps:
       - name: Obtener información del issue
+        # Paso: recopilar número, título, cuerpo y URL del issue.
+        # Se maneja el caso de: event issues, issue_comment y workflow_dispatch (manual).
         id: get-issue
         uses: actions/github-script@v7
         with:
@@ -69,6 +79,8 @@ jobs:
             core.setOutput('issue_url', issueData.html_url);
 
       - name: Ejecutar Gemini CLI para Clasificación
+        # Paso: enviar prompt a Gemini CLI con el título y cuerpo del issue.
+        # Gemini devolverá la clasificación en el formato definido más arriba.
         id: gemini-analysis
         uses: google-github-actions/run-gemini-cli@v0.1.10
         with:
@@ -132,6 +144,9 @@ jobs:
           gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
 
       - name: Comentar clasificación en el issue
+        # Paso: si Gemini responde correctamente, comentar en el issue y aplicar labels.
+        # - Extrae patrones en la respuesta para convertirlos en labels.
+        # - Aplica hasta las etiquetas encontradas (tipo, prioridad, complejidad, área).
         if: success()
         uses: actions/github-script@v7
         env:
@@ -183,6 +198,7 @@ jobs:
             }
 
       - name: Comentar si hay error
+        # Paso: en caso de fallo en el análisis, publicar un comentario con enlace a los logs.
         if: failure()
         uses: actions/github-script@v7
         with:
