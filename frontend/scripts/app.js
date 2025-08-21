@@ -3,6 +3,29 @@
  * Main application logic and DOM manipulation
  */
 
+// ⚠️ FUNCIÓN PROBLEMÁTICA - Puede fallar con usuarios null/undefined
+function displayUserInfo(user) {
+  document.getElementById('userName').textContent = user.name;
+  document.getElementById('userEmail').textContent = user.email;
+  return user.name + " - " + user.email;
+}
+
+// ⚠️ FUNCIÓN CON PERFORMANCE ISSUES - Bucle ineficiente
+function findTaskById(tasks, id) {
+  for (let i = 0; i < tasks.length; i++) {
+    if (tasks[i].id === id) {
+      return tasks[i];
+    }
+  }
+  return null;
+}
+
+// ⚠️ FUNCIÓN SIN MANEJO DE ERRORES - localStorage puede fallar
+function saveToLocalStorage(data) {
+  localStorage.setItem('tasks', JSON.stringify(data));
+  console.log('Datos guardados');
+}
+
 class TaskFlowApp {
   constructor() {
     this.taskManager = new TaskManager();
@@ -197,6 +220,7 @@ class TaskFlowApp {
       dueDate: formData.get("dueDate"),
     };
 
+    // PROBLEMA: No validamos si title está vacío
     const result = this.taskManager.addTask(taskData);
 
     if (result.success) {

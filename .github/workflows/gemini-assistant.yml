@@ -64,15 +64,17 @@ jobs:
        !contains(github.event.review.body, '/review'))
 
     permissions:
-      contents: read
+      contents: write           # ✅ CAMBIADO: Ahora puede escribir archivos
       issues: write
       pull-requests: write
+      actions: read             # ✅ AGREGADO: Para leer workflow info
 
   # ----------------------------------------------------------------------
-  # PERMISOS:
-  # - contents:read        → Leer archivos del repositorio para contexto
-  # - issues:write         → Comentar en issues
-  # - pull-requests:write  → Comentar en PRs
+  # PERMISOS ACTUALIZADOS:
+  # - contents:write       → ✅ NUEVO: Permite escribir archivos, hacer commits y push
+  # - issues:write         → ✅ Comentar en issues
+  # - pull-requests:write  → ✅ Comentar en PRs
+  # - actions:read         → ✅ NUEVO: Leer información de workflows
   # ----------------------------------------------------------------------
   # - contents:read -> permite leer archivos del repo si Gemini solicita contexto.
   # - issues:write -> necesario para publicar respuestas en issues/PRs.
@@ -113,10 +115,11 @@ jobs:
 
       - name: Ejecutar Gemini CLI Asistente
         # Paso: invocar la acción `run-gemini-cli` con el prompt adaptado al repo.
-        # - `settings.coreTools` define qué comandos puede solicitar el asistente.
-        # - `maxSessionTurns` limita la longitud de la sesión para evitar loops.
+        # ✅ ACTUALIZADO: Ahora puede modificar archivos y hacer commits automáticamente
+        # - `settings.coreTools` incluye herramientas de escritura de archivos
+        # - `maxSessionTurns` limita la longitud de la sesión para evitar loops
         id: gemini-assistant
-        uses: google-github-actions/run-gemini-cli@v0
+        uses: google-github-actions/run-gemini-cli@v0.1.10  # ✅ VERSIÓN CORRECTA
         with:
           prompt: |
             Eres un asistente de desarrollo de software inteligente y útil especializado en este proyecto TallerGeminiCLIActions.
@@ -169,6 +172,9 @@ jobs:
             {
               "coreTools": [
                 "read_file",
+                "write_file",
+                "create_file", 
+                "edit_file",
                 "run_shell_command(ls)",
                 "run_shell_command(find)",
                 "run_shell_command(grep)",
@@ -178,9 +184,12 @@ jobs:
                 "run_shell_command(wc)",
                 "run_shell_command(tree)",
                 "run_shell_command(echo)",
+                "run_shell_command(git add)",
+                "run_shell_command(git commit)",
+                "run_shell_command(git push)",
                 "run_shell_command(gh)"
               ],
-              "maxSessionTurns": 10
+              "maxSessionTurns": 15
             }
 
       - name: Responder al comentario
