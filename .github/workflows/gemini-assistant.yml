@@ -1,5 +1,17 @@
 name: 💬 Gemini CLI Assistant
 
+# =============================================================
+# WORKFLOW: Gemini CLI - Asistente General
+# =============================================================
+# Este workflow proporciona un asistente general que responde preguntas
+# y ofrece ayuda sobre el código, arquitectura, mejores prácticas, etc.
+#
+# ¿Qué hace?
+# - Responde a menciones @gemini-cli SIN comandos específicos
+# - Proporciona asesoramiento general sobre código y proyectos
+# - Excluye comandos específicos (/triage, /review) que tienen workflows dedicados
+# =============================================================
+
 on:
   issue_comment:
     types: [created]
@@ -24,9 +36,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
 
+  # ----------------------------------------------------------------------
+  # CONDICIÓN DE EJECUCIÓN (if):
   # Solo ejecutar cuando se mencione @gemini-cli SIN comandos específicos (/triage, /review)
   # Nota: se excluyen los comandos /triage y /review porque existen workflows separados
   # que manejan esas acciones con prompts más especializados y permisos distintos.
+  # 
+  # Casos de activación:
+  # 1. Ejecución manual (workflow_dispatch)
+  # 2. @gemini-cli en comentarios de issues (sin /triage ni /review)
+  # 3. @gemini-cli en comentarios de PRs (sin /triage ni /review)  
+  # 4. @gemini-cli en reviews de PRs (sin /triage ni /review)
+  # ----------------------------------------------------------------------
     if: >-
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'issue_comment' && 
@@ -47,7 +68,12 @@ jobs:
       issues: write
       pull-requests: write
 
-  # Permisos explicados:
+  # ----------------------------------------------------------------------
+  # PERMISOS:
+  # - contents:read        → Leer archivos del repositorio para contexto
+  # - issues:write         → Comentar en issues
+  # - pull-requests:write  → Comentar en PRs
+  # ----------------------------------------------------------------------
   # - contents:read -> permite leer archivos del repo si Gemini solicita contexto.
   # - issues:write -> necesario para publicar respuestas en issues/PRs.
   # - pull-requests:write -> necesario si el asistente crea comentarios en PRs.

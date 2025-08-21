@@ -1,242 +1,137 @@
-# 🤖 Gemini CLI GitHub Actions - Complete Workshop
+# 🤖 Gemini CLI GitHub Actions
 
 [![Gemini CLI](https://img.shields.io/badge/Gemini_CLI-Powered-blue)](https://github.com/google-github-actions/run-gemini-cli)
 [![GitHub Actions](https://img.shields.io/badge/GitHub_Actions-Automated-green)](https://github.com/features/actions)
-[![Workshop](https://img.shields.io/badge/Workshop-Ready-orange)](https://github.com/tu-usuario/GeminiCLIProject)
-[![MIT License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-> **Complete educational demonstration of 3 GitHub Actions workflows using Gemini CLI to automate development tasks with artificial intelligence**
+> **3 GitHub Actions workflows using Gemini CLI to automate development tasks with AI**
 
-## 🎯 The 3 Implemented Workflows
+## 🎯 Available Workflows
 
-### 🏷️ **1. Issue Triage - Automatic Classification**
+### 🏷️ **Issue Triage** (`gemini-issue-automated-triage.yml`)
+- Automatically classifies new issues
+- Intelligently assigns labels and priorities
+- **Manual command:** `@gemini-cli /triage` (Issues and PRs)
 
-- 🤖 Analyzes issues automatically when created
-- 🏷️ Assigns intelligent labels by category and priority
-- 👥 Suggests assignment to team experts
-- ⚡ **Command**: `@gemini-cli /triage`
+### 🔍 **PR Review** (`gemini-pr-review.yml`)
+- Automatically reviews code in Pull Requests
+- Detects bugs and suggests improvements
+- **Manual command:** `@gemini-cli /review` (PRs and Issues)
 
-### 🔍 **2. PR Review - Code Review**
+### 💬 **Gemini Assistant** (`gemini-assistant.yml`)
+- General assistant for technical questions
+- **Usage:** `@gemini-cli` + your question (Issues and PRs)
 
-- 🔒 Detects security vulnerabilities
-- ⚡ Analyzes performance and optimizations
-- 🧹 Suggests clean code improvements
-- 📚 **Command**: `@gemini-cli /review`
+## 🚀 Quick Setup
 
-### 🤖 **3. Gemini Assistant - 24/7 Technical Assistant**
+## 🚀 Quick Setup
 
-- 💬 Answers technical queries instantly
-- 📖 Explains complex concepts and code
-- 💡 Generates project-specific suggestions
-- 🛠️ **Commands**: `/explicar`, `/sugerir`, `/documentar`, `/implementar`
+### 🔑 **1. Get API Key**
+- Go to [Google AI Studio](https://aistudio.google.com/)
+- Create a free Gemini API Key
+- Copy the generated key
 
-## 🚀 Ultra-Fast Setup (5 minutes)
+### ⚙️ **2. Configure GitHub**
+- Fork this repository
+- Go to `Settings > Secrets and variables > Actions`
+- Add: `GEMINI_API_KEY = your_api_key`
 
-### 🔑 **Step 1: Get API Key**
+### ✅ **3. Test the Workflows**
 
-1. Go to [Google AI Studio](https://aistudio.google.com/)
-2. Create free API Key for Gemini
-3. Copy the generated key
-
-### ⚙️ **Step 2: Configure Repository**
-
-1. **Fork** this repository
-2. Go to `Settings > Secrets and variables > Actions`
-3. Add secret: `GEMINI_API_KEY = your_api_key`
-4. Enable GitHub Actions in your fork
-
-### ✅ **Step 3: Test Immediately**
-
-1. Create a new issue in your fork
-2. Comment: `@gemini-cli /triage`
-3. Watch the AI magic in action! ✨
-
-## 🎭 Demo Application: TaskFlow Manager
-
-### **What's included in the project?**
-
-A **complete web application** for task management developed in vanilla JavaScript that serves as a real project to demonstrate all workflows.
-
-#### **🌟 Technical Features:**
-
-- ✅ **Vanilla JavaScript** - No complex dependencies
-- 📱 **Responsive Design** - Works on mobile
-- 💾 **Local Storage** - Data persistence
-- 🎨 **Modern CSS** - Flexbox, Grid, CSS Variables
-- 🧪 **Tests Included** - To test PR reviews
-
-#### ** Functionalities:**
-
-- ➕ Create/edit/delete tasks
-- 🔍 Filter by status (all/active/completed)
-- 📊 Real-time productivity statistics
-- 🎯 Priority system
-- ⏰ Automatic timestamps
-
-## 📚 Complete Documentation
-
-### **📖 Detailed Technical Guides:**
-
-- 📋 [**Workflow 1: Issue Triage**](docs/workflow-issue-triage.md) - Step-by-step data flow analysis
-- 🔍 [**Workflow 2: PR Review**](docs/workflow-pr-review.md) - Detailed technical review
-- 🤖 [**Workflow 3: Gemini Assistant**](docs/workflow-gemini-assistant.md) - Assistant functionality
-- 🎓 [**Workshop Guide**](docs/workshop-final.md) - Complete documentation for presentations
-
-### **🔧 Additional Resources:**
-
-- 📝 [Workflows Summary](docs/WORKFLOWS-ES.md)
-- 🤖 [Gemini CLI Documentation](GEMINI.md)
-
-## 🎓 Ideal for Workshops and Training
-
-### **👨‍🏫 For Instructors:**
-
-- ✅ **5-minute setup** - Ultra-fast configuration
-- ✅ **3 complete demos** - Real use cases
-- ✅ **Educational documentation** - Step-by-step explanations
-- ✅ **Functional project** - Real app to experiment with
-
-### **👨‍� For Participants:**
-
-- 🎯 **Practical use cases** applicable immediately
-- 🤖 **Hands-on experience** with AI workflows
-- 📚 **Documented code** for later study
-- 🚀 **Implementation base** for real projects
-
-## 🛠️ Available Commands
-
-### **🏷️ For Issues:**
-
-```bash
-@gemini-cli /triage    # Analyze and classify automatically
+#### **Triage (Classification):**
 ```
-
-### **🔍 For Pull Requests:**
-
-```bash
-@gemini-cli /review    # Complete code review
+@gemini-cli /triage
 ```
+*Works in Issues and PRs*
 
-### **🤖 General Assistant:**
-
-```bash
-@gemini-cli /explicar [concept]      # Technical explanations
-@gemini-cli /sugerir [optimization]   # Improvement suggestions
-@gemini-cli /documentar [code]      # Generate documentation
-@gemini-cli /implementar [feature]    # Implementation guide
-@gemini-cli /debug [problem]         # Debugging help
-@gemini-cli [any question]      # General queries
+#### **Review (Code Review):**
 ```
-
-## 📊 Project Metrics
-
-### **⚡ Performance:**
-
-- **<30 seconds** - Average response time
-- **>95% accuracy** - In issue classification
-- **>90% relevance** - In code suggestions
-- **24/7 available** - Assistant always active
-
-### **🎯 Successful Use Cases:**
-
-- 🏷️ **Automatic triage** - Saves 80% classification time
-- 🔒 **Vulnerability detection** - Proactive prevention
-- 📚 **Automatic documentation** - Generates contextual docs
-- 💡 **Technical mentoring** - Continuous team training
-
-## 🔧 Customization for Your Project
-
-### **🎨 Technology-based Adaptation:**
-
-#### **For React/Frontend:**
-
-- Hooks and performance analysis
-- Anti-pattern detection
-- Accessibility suggestions
-- Render optimization
-
-#### **For Backend/APIs:**
-
-- Automatic security review
-- Vulnerability analysis
-- Query optimization
-- REST best practices
-
-#### **For DevOps/Infrastructure:**
-
-- Configuration review
-- Security analysis
-- Pipeline optimization
-- Monitoring suggestions
-
-## 🚀 Post-Workshop Use Cases
-
-### **🏢 For Development Teams:**
-
-1. **Automatic onboarding** - Assistant for new developers
-2. **Assisted code review** - Detect problems before merge
-3. **Knowledge base** - Instant technical queries
-4. **Scalable mentoring** - 24/7 guidance for entire team
-
-### **📈 For Organizations:**
-
-1. **Standardization** - Consistency in quality gates
-2. **Scalability** - Automatic review across multiple repos
-3. **Metrics** - Code quality tracking
-4. **Training** - Continuous team upskilling
-
-## 🐛 Troubleshooting
-
-### **❌ Common Problems:**
-
-#### **1. Workflow doesn't execute:**
-
-```bash
-✅ Verify: GEMINI_API_KEY configured correctly
-✅ Check: GitHub Actions enabled
-✅ Review: Repository permissions
+@gemini-cli /review
 ```
+*Works in PRs and Issues with code*
 
-#### **2. No response from Gemini:**
-
-```bash
-✅ Validate: API Key in Google AI Studio
-✅ Verify: Rate limits not exceeded
-✅ Check: Command syntax (@gemini-cli)
+#### **Assistant (General Questions):**
 ```
-
-#### **3. Irrelevant responses:**
-
-```bash
-✅ Improve: Context in query
-✅ Specify: Specific files or functions
-✅ Include: Relevant technical information
+@gemini-cli How to optimize this code?
+@gemini-cli What design pattern to use here?
 ```
+*Works in Issues and PRs*
 
-## 🤝 Contributions and Extensions
+## 📋 Available Commands
 
-### **📝 How to Contribute:**
+| Command | Issues | PRs | Description |
+|---------|:------:|:---:|-------------|
+| `@gemini-cli /triage` | ✅ | ✅ | Classify and categorize |
+| `@gemini-cli /review` | ✅ | ✅ | Review code |
+| `@gemini-cli` + question | ✅ | ✅ | General assistant |
 
-1. Fork the repository
-2. Create branch for your feature
-3. Implement with tests
-4. Document changes
-5. Open Pull Request (will be reviewed by Gemini! 🤖)
+## 🎭 Demo Application
+
+### **Simple Frontend**
+- ✅ **Vanilla JavaScript**
+- 📱 **Basic HTML/CSS**
+- 💾 **No dependencies**
+- 🎨 **Responsive design**
+
+Includes code examples to test review and triage workflows.
+
+## 🎓 Workshop Usage
+
+**Perfect for:**
+- 👨‍🏫 GitHub Actions demonstrations
+- 🤖 AI integration in development
+- ⚡ Workflow automation
+- 🚀 Practical Gemini CLI examples
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](LICENSE) for details.
 
-MIT License - Use freely for workshops, training, and commercial projects.
+- ✅ **Complete Frontend**: HTML, CSS, JavaScript
+- 📱 **Responsive**: Works on mobile devices
+- 💾 **Persistence**: Uses localStorage
+- 🧪 **Example Code**: For testing workflows
+
+#### **Project Structure:**
+```
+frontend/
+├── index.html          # Main page
+├── styles/
+│   ├── main.css        # Main styles
+│   └── components.css  # UI components
+└── scripts/
+    ├── app.js          # Main logic
+    ├── taskManager.js  # Task management
+    └── utils.js        # Utilities
+```
+
+## � Documentation
+
+- 🎯 [**Complete Demos**](docs/DEMOS-WORKFLOWS.md) - Step-by-step examples
+- ⚙️ [**Workflow Configuration**](docs/) - Technical documentation
+
+## �️ Use Cases
+
+### **For Development:**
+- 🔍 **Automatic Code Review** - Catch bugs before merge
+- 🏷️ **Issue Classification** - Organize automatically
+- 💬 **Technical Assistant** - Answer questions instantly
+
+### **For Learning:**
+- 📚 **Practical Examples** - Real working workflows
+- 🤖 **Applied AI** - Practical use of Gemini CLI
+- 📖 **Documented Code** - Easy to understand and modify
+
+## 📄 License
+
+This project is licensed under the MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 
-### **🎯 Ready for the Workshop?**
+**🎯 Ready to try it?**
 
-1. **Fork** this repository
-2. **Configure** GEMINI_API_KEY
-3. **Test** the 3 workflows
-4. **Experiment** with the demo application
-5. **Implement** in your real project
+1. Fork this repository
+2. Configure `GEMINI_API_KEY`
+3. Test commands in Issues and PRs  
+4. Experiment with the demo app!
 
-Welcome to the future of AI-assisted development! 🚀✨
+Welcome to AI-assisted development! 🚀✨
