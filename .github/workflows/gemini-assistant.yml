@@ -1,254 +1,417 @@
-name: 💬 Gemini CLI Assistant
-
 # =============================================================
-# WORKFLOW: Gemini CLI - Asistente General
+# WORKFLOW: Gemini CLI - Asistente General Inteligente
 # =============================================================
-# Este workflow proporciona un asistente general que responde preguntas
-# y ofrece ayuda sobre el código, arquitectura, mejores prácticas, etc.
+# Este workflow proporciona un asistente de IA que puede:
+# - 🤖 Responder preguntas sobre código y proyectos
+# - 🔧 Crear fixes automáticos para issues
+# - 💬 Responder comentarios en PRs
+# - 📝 Modificar código y documentación automáticamente
+# - 🚀 Crear branches y pull requests automáticamente
 #
-# ¿Qué hace?
-# - Responde a menciones @gemini-cli SIN comandos específicos
-# - Proporciona asesoramiento general sobre código y proyectos
-# - Excluye comandos específicos (/triage, /review) que tienen workflows dedicados
+# ACTIVACIÓN: Cuando se menciona @gemini-cli (sin /triage o /review)
+# PERMISOS: contents:write, issues:write, pull-requests:write
+# SEGURIDAD: Solo usuarios de confianza (OWNER, MEMBER, COLLABORATOR)
 # =============================================================
 
+name: '💬 Gemini CLI Assistant'
+
+# EVENTOS QUE ACTIVAN EL WORKFLOW
 on:
-  issue_comment:
-    types: [created]
-  pull_request_review_comment:
-    types: [created]
-  pull_request_review:
-    types: [submitted]
-  workflow_dispatch:
-    inputs:
-      comment_body:
-        description: "Pregunta para el asistente"
-        required: true
-        type: string
-      issue_number:
-        description: "Número del issue o PR"
-        required: false
-        type: string
+  pull_request_review_comment:    # Comentarios en revisiones de PR
+    types:
+      - 'created'
+  pull_request_review:            # Reviews completados en PRs
+    types:
+      - 'submitted'
+  issue_comment:                  # Comentarios en issues y PRs
+    types:
+      - 'created'
+
+# CONTROL DE CONCURRENCIA
+# Evita múltiples ejecuciones simultáneas en el mismo issue/PR
+concurrency:
+  group: '${{ github.workflow }}-${{ github.event.issue.number }}'
+  cancel-in-progress: |-
+    ${{ github.event.sender.type == 'User' && ( github.event.issue.author_association == 'OWNER' || github.event.issue.author_association == 'MEMBER' || github.event.issue.author_association == 'COLLABORATOR') }}
+
+# CONFIGURACIÓN PREDETERMINADA
+defaults:
+  run:
+    shell: 'bash'    # Usar bash para todos los comandos shell
+
+# PERMISOS NECESARIOS PARA EL WORKFLOW
+permissions:
+  contents: 'write'        # 📝 NECESARIO: Para modificar archivos y hacer commits
+  id-token: 'write'        # 🔐 Para autenticación con Google Cloud (si se usa)
+  pull-requests: 'write'   # 🔄 NECESARIO: Para comentar y crear PRs
+  issues: 'write'          # 💬 NECESARIO: Para comentar en issues
 
 jobs:
-  assistant:
-    name: Asistente Gemini
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-
-  # ----------------------------------------------------------------------
-  # CONDICIÓN DE EJECUCIÓN (if):
-  # Solo ejecutar cuando se mencione @gemini-cli SIN comandos específicos (/triage, /review)
-  # Nota: se excluyen los comandos /triage y /review porque existen workflows separados
-  # que manejan esas acciones con prompts más especializados y permisos distintos.
-  # 
-  # Casos de activación:
-  # 1. Ejecución manual (workflow_dispatch)
-  # 2. @gemini-cli en comentarios de issues (sin /triage ni /review)
-  # 3. @gemini-cli en comentarios de PRs (sin /triage ni /review)  
-  # 4. @gemini-cli en reviews de PRs (sin /triage ni /review)
-  # ----------------------------------------------------------------------
-    if: >-
+  gemini-cli:
+    # =================================================================
+    # CONDICIONES DE SEGURIDAD Y ACTIVACIÓN
+    # =================================================================
+    # Este workflow SOLO se ejecuta cuando:
+    # 1. Es activado manualmente (workflow_dispatch)
+    # 2. Se menciona @gemini-cli en issues/comentarios/reviews
+    # 3. NO incluye comandos específicos (/review, /triage)
+    # 4. El usuario es de CONFIANZA (OWNER, MEMBER, COLLABORATOR)
+    # 
+    # SEGURIDAD: En repos públicos, solo usuarios con permisos pueden activar
+    # PRIVADOS: Cualquier usuario con acceso puede activar
+    # =================================================================
+    if: |-
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'issue_comment' && 
-       contains(github.event.comment.body, '@gemini-cli') && 
-       !contains(github.event.comment.body, '/triage') &&
-       !contains(github.event.comment.body, '/review')) ||
-      (github.event_name == 'pull_request_review_comment' && 
-       contains(github.event.comment.body, '@gemini-cli') && 
-       !contains(github.event.comment.body, '/triage') &&
-       !contains(github.event.comment.body, '/review')) ||
-      (github.event_name == 'pull_request_review' && 
-       contains(github.event.review.body, '@gemini-cli') && 
-       !contains(github.event.review.body, '/triage') &&
-       !contains(github.event.review.body, '/review'))
-
-    permissions:
-      contents: write           # ✅ CAMBIADO: Ahora puede escribir archivos
-      issues: write
-      pull-requests: write
-      actions: read             # ✅ AGREGADO: Para leer workflow info
-
-  # ----------------------------------------------------------------------
-  # PERMISOS ACTUALIZADOS:
-  # - contents:write       → ✅ NUEVO: Permite escribir archivos, hacer commits y push
-  # - issues:write         → ✅ Comentar en issues
-  # - pull-requests:write  → ✅ Comentar en PRs
-  # - actions:read         → ✅ NUEVO: Leer información de workflows
-  # ----------------------------------------------------------------------
-  # - contents:read -> permite leer archivos del repo si Gemini solicita contexto.
-  # - issues:write -> necesario para publicar respuestas en issues/PRs.
-  # - pull-requests:write -> necesario si el asistente crea comentarios en PRs.
-
+      (
+        github.event_name == 'issues' && github.event.action == 'opened' &&
+        contains(github.event.issue.body, '@gemini-cli') &&
+        !contains(github.event.issue.body, '@gemini-cli /review') &&
+        !contains(github.event.issue.body, '@gemini-cli /triage') &&
+        (
+          github.event.repository.private == true ||
+          contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.issue.author_association)
+        )
+      ) ||
+      (
+        (
+          github.event_name == 'issue_comment' ||
+          github.event_name == 'pull_request_review_comment'
+        ) &&
+        contains(github.event.comment.body, '@gemini-cli') &&
+        !contains(github.event.comment.body, '@gemini-cli /review') &&
+        !contains(github.event.comment.body, '@gemini-cli /triage') &&
+        (
+          github.event.repository.private == true ||
+          contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+        )
+      ) ||
+      (
+        github.event_name == 'pull_request_review' &&
+        contains(github.event.review.body, '@gemini-cli') &&
+        !contains(github.event.review.body, '@gemini-cli /review') &&
+        !contains(github.event.review.body, '@gemini-cli /triage') &&
+        (
+          github.event.repository.private == true ||
+          contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.review.author_association)
+        )
+      )
+    timeout-minutes: 10    # ⏱️ Timeout de 10 minutos para evitar ejecuciones largas
+    runs-on: 'ubuntu-latest'
     steps:
-      - name: Checkout repository
-        # Paso: traer el código del repositorio al runner. fetch-depth: 0 para poder
-        # acceder al historial completo si el asistente lo solicita mediante coreTools.
-        uses: actions/checkout@v4
+      # =================================================================
+      # PASO 1: GENERAR TOKEN DE GITHUB APP (OPCIONAL)
+      # =================================================================
+      # Si se configura una GitHub App personalizada, genera un token
+      # Ventajas: Mayor límite de rate, mejor seguridad
+      # Alternativa: Usar GITHUB_TOKEN predeterminado
+      # =================================================================
+      - name: '🔐 Generar Token de GitHub App'
+        id: 'generate_token'
+        if: |-
+          ${{ vars.APP_ID }}
+        uses: 'actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b' # ratchet:actions/create-github-app-token@v2
         with:
+          app-id: '${{ vars.APP_ID }}'
+          private-key: '${{ secrets.APP_PRIVATE_KEY }}'
+
+      # =================================================================
+      # PASO 2: EXTRAER CONTEXTO DEL EVENTO
+      # =================================================================
+      # Identifica el tipo de evento y extrae:
+      # - USER_REQUEST: El comentario/contenido del usuario
+      # - ISSUE_NUMBER: Número del issue o PR
+      # - IS_PR: Si es un Pull Request (true/false)
+      # =================================================================
+      - name: '📋 Obtener contexto del evento'
+        id: 'get_context'
+        env:
+          EVENT_NAME: '${{ github.event_name }}'
+          EVENT_PAYLOAD: '${{ toJSON(github.event) }}'
+        run: |-
+          set -euo pipefail
+
+          USER_REQUEST=""
+          ISSUE_NUMBER=""
+          IS_PR="false"
+
+          if [[ "${EVENT_NAME}" == "issues" ]]; then
+            USER_REQUEST=$(echo "${EVENT_PAYLOAD}" | jq -r .issue.body)
+            ISSUE_NUMBER=$(echo "${EVENT_PAYLOAD}" | jq -r .issue.number)
+          elif [[ "${EVENT_NAME}" == "issue_comment" ]]; then
+            USER_REQUEST=$(echo "${EVENT_PAYLOAD}" | jq -r .comment.body)
+            ISSUE_NUMBER=$(echo "${EVENT_PAYLOAD}" | jq -r .issue.number)
+            if [[ $(echo "${EVENT_PAYLOAD}" | jq -r .issue.pull_request) != "null" ]]; then
+              IS_PR="true"
+            fi
+          elif [[ "${EVENT_NAME}" == "pull_request_review" ]]; then
+            USER_REQUEST=$(echo "${EVENT_PAYLOAD}" | jq -r .review.body)
+            ISSUE_NUMBER=$(echo "${EVENT_PAYLOAD}" | jq -r .pull_request.number)
+            IS_PR="true"
+          elif [[ "${EVENT_NAME}" == "pull_request_review_comment" ]]; then
+            USER_REQUEST=$(echo "${EVENT_PAYLOAD}" | jq -r .comment.body)
+            ISSUE_NUMBER=$(echo "${EVENT_PAYLOAD}" | jq -r .pull_request.number)
+            IS_PR="true"
+          fi
+
+          # Clean up user request
+          USER_REQUEST=$(echo "${USER_REQUEST}" | sed 's/.*@gemini-cli//' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+          {
+            echo "user_request=${USER_REQUEST}"
+            echo "issue_number=${ISSUE_NUMBER}"
+            echo "is_pr=${IS_PR}"
+          } >> "${GITHUB_OUTPUT}"
+
+      # =================================================================
+      # PASO 3: CONFIGURAR GIT PARA COMMITS AUTOMÁTICOS
+      # =================================================================
+      # Configura la identidad de git para que Gemini pueda hacer commits
+      # automáticamente cuando modifique archivos o cree fixes
+      # =================================================================
+      - name: '🔧 Configurar usuario git para commits'
+        run: |-
+          git config --global user.name 'gemini-cli[bot]'
+          git config --global user.email 'gemini-cli[bot]@users.noreply.github.com'
+
+      # =================================================================
+      # PASO 4: CHECKOUT DE BRANCH DEL PR (SI APLICA)
+      # =================================================================
+      # Si la solicitud viene de un PR, hace checkout del branch del PR
+      # Esto permite que Gemini modifique el código directamente en el PR
+      # =================================================================
+      - name: '📥 Checkout branch del PR'
+        if: |-
+          ${{  steps.get_context.outputs.is_pr == 'true' }}
+        uses: 'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8' # ratchet:actions/checkout@v5
+        with:
+          token: '${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}'
+          repository: '${{ github.repository }}'
+          ref: 'refs/pull/${{ steps.get_context.outputs.issue_number }}/head'
           fetch-depth: 0
 
-      - name: Obtener contexto del comentario
-        # Paso: construir un JSON con los datos relevantes (comentario, título, cuerpo,
-        # autor y nombre del repo). Este contexto se pasa al prompt para respuestas
-        # más ricas y específicas.
-        id: get-context
-        uses: actions/github-script@v7
+      # =================================================================
+      # PASO 5: CHECKOUT DE BRANCH PRINCIPAL (SI NO ES PR)
+      # =================================================================
+      # Para issues normales, hace checkout del branch principal
+      # Gemini creará un nuevo branch para sus cambios
+      # =================================================================
+      - name: '📥 Checkout branch principal'
+        if: |-
+          ${{  steps.get_context.outputs.is_pr == 'false' }}
+        uses: 'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8' # ratchet:actions/checkout@v5
         with:
-          script: |
-            const context_data = {
-              comment_body: context.payload.comment?.body || 
-                           context.payload.review?.body || 
-                           context.payload.inputs?.comment_body || '',
-              issue_title: context.payload.issue?.title || '',
-              issue_body: context.payload.issue?.body || '',
-              pr_title: context.payload.pull_request?.title || '',
-              pr_body: context.payload.pull_request?.body || '',
-              author: context.payload.comment?.user?.login || 
-                      context.payload.review?.user?.login ||
-                      context.actor,
-              repository_name: context.repo.repo,
-              repository_owner: context.repo.owner
-            };
-            
-            return JSON.stringify(context_data);
+          token: '${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}'
+          repository: '${{ github.repository }}'
+          fetch-depth: 0
 
-      - name: Ejecutar Gemini CLI Asistente
-        # Paso: invocar la acción `run-gemini-cli` con el prompt adaptado al repo.
-        # ✅ ACTUALIZADO: Ahora puede modificar archivos y hacer commits automáticamente
-        # - `settings.coreTools` incluye herramientas de escritura de archivos
-        # - `maxSessionTurns` limita la longitud de la sesión para evitar loops
-        id: gemini-assistant
-        uses: google-github-actions/run-gemini-cli@v0.1.10  # ✅ VERSIÓN CORRECTA
+      # =================================================================
+      # PASO 6: NOTIFICACIÓN DE CONFIRMACIÓN
+      # =================================================================
+      # Confirma al usuario que se recibió la solicitud y se está procesando
+      # Proporciona feedback inmediato para mejorar la experiencia del usuario
+      # =================================================================
+      - name: '💬 Confirmar recepción de solicitud'
+        env:
+          GITHUB_ACTOR: '${{ github.actor }}'
+          GITHUB_TOKEN: '${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}'
+          ISSUE_NUMBER: '${{ steps.get_context.outputs.issue_number }}'
+          REPOSITORY: '${{ github.repository }}'
+          REQUEST_TYPE: '${{ steps.get_context.outputs.request_type }}'
+        run: |-
+          set -euo pipefail
+          MESSAGE="@${GITHUB_ACTOR} ¡He recibido tu solicitud y estoy trabajando en ella ahora! 🤖"
+          if [[ -n "${MESSAGE}" ]]; then
+            gh issue comment "${ISSUE_NUMBER}" \
+              --body "${MESSAGE}" \
+              --repo "${REPOSITORY}"
+          fi
+
+      # =================================================================
+      # PASO 7: OBTENER DESCRIPCIÓN DEL ISSUE/PR
+      # =================================================================
+      # Extrae la descripción del issue o PR para proporcionar contexto
+      # completo a Gemini sobre el problema o solicitud original
+      # =================================================================
+      - name: '📄 Obtener descripción'
+        id: 'get_description'
+        env:
+          GITHUB_TOKEN: '${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}'
+          IS_PR: '${{ steps.get_context.outputs.is_pr }}'
+          ISSUE_NUMBER: '${{ steps.get_context.outputs.issue_number }}'
+        run: |-
+          set -euo pipefail
+          if [[ "${IS_PR}" == "true" ]]; then
+            DESCRIPTION=$(gh pr view "${ISSUE_NUMBER}" --json body --template '{{.body}}')
+          else
+            DESCRIPTION=$(gh issue view "${ISSUE_NUMBER}" --json body --template '{{.body}}')
+          fi
+          {
+            echo "description<<EOF"
+            echo "${DESCRIPTION}"
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
+
+      # =================================================================
+      # PASO 8: OBTENER COMENTARIOS EXISTENTES
+      # =================================================================
+      # Recopila todos los comentarios existentes para proporcionar
+      # el historial completo de la conversación a Gemini
+      # =================================================================
+      - name: '💬 Obtener comentarios'
+        id: 'get_comments'
+        env:
+          GITHUB_TOKEN: '${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}'
+          IS_PR: '${{ steps.get_context.outputs.is_pr }}'
+          ISSUE_NUMBER: '${{ steps.get_context.outputs.issue_number }}'
+        run: |-
+          set -euo pipefail
+          if [[ "${IS_PR}" == "true" ]]; then
+            COMMENTS=$(gh pr view "${ISSUE_NUMBER}" --json comments --template '{{range .comments}}{{.author.login}}: {{.body}}{{"\n"}}{{end}}')
+          else
+            COMMENTS=$(gh issue view "${ISSUE_NUMBER}" --json comments --template '{{range .comments}}{{.author.login}}: {{.body}}{{"\n"}}{{end}}')
+          fi
+          {
+            echo "comments<<EOF"
+            echo "${COMMENTS}"
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
+
+      # =================================================================
+      # PASO 9: EJECUTAR GEMINI - EL CORAZÓN DEL ASISTENTE
+      # =================================================================
+      # Esta es la parte principal donde Gemini procesa la solicitud
+      # Configuración: API key, modelos, herramientas y prompt en español
+      # Capacidades: Análisis de código, fixes automáticos, documentación
+      # =================================================================
+      - name: '🤖 Ejecutar Gemini'
+        id: 'run_gemini'
+        uses: 'google-github-actions/run-gemini-cli@v0'
+        env:
+          GITHUB_TOKEN: '${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}'
+          REPOSITORY: '${{ github.repository }}'
+          USER_REQUEST: '${{ steps.get_context.outputs.user_request }}'
+          ISSUE_NUMBER: '${{ steps.get_context.outputs.issue_number }}'
+          IS_PR: '${{ steps.get_context.outputs.is_pr }}'
         with:
-          prompt: |
-            Eres un asistente de desarrollo de software inteligente y útil especializado en este proyecto TallerGeminiCLIActions.
-
-            **CONTEXTO DEL PROYECTO:**
-            ${{ steps.get-context.outputs.result }}
-
-            **TU MISIÓN:**
-            Ayudar a desarrolladores con preguntas técnicas, explicaciones de código, y sugerencias de mejora relacionadas con GitHub Actions, Gemini CLI, y desarrollo web frontend.
-
-            **CAPACIDADES PRINCIPALES:**
-            💡 **Análisis de código**: Explicar funciones, patrones y arquitectura
-            � **Solución de problemas**: Debugging, errores, mejores prácticas
-            📚 **Educación técnica**: Conceptos, algoritmos, tecnologías web
-            🎯 **Recomendaciones**: Mejoras de código, herramientas, optimizaciones
-            📝 **Documentación**: Ayuda con README, comentarios, guías de usuario
-            🤖 **GitHub Actions**: Workflows, automatización, integración CI/CD
-
-            **COMANDOS ESPECIALIZADOS:**
-            - `/explicar [concepto]` - Explica tecnologías, patrones o código
-            - `/sugerir [contexto]` - Propone mejoras o alternativas
-            - `/documentar [elemento]` - Ayuda con documentación
-            - `/analizar [problema]` - Analiza issues o errores específicos
-            - `/optimizar [código]` - Sugiere optimizaciones de rendimiento
-
-            **GUIDELINES:**
-            ✅ Responde SIEMPRE en español
-            ✅ Sé específico y proporciona ejemplos de código
-            ✅ Considera el contexto educativo del proyecto (es un taller)
-            ✅ Sugiere recursos adicionales para aprender más
-            ✅ Usa emojis para claridad visual
-            ✅ Si necesitas más contexto del repositorio, puedes solicitar archivos específicos
-
-            **FORMATO DE RESPUESTA:**
-            
-            🤖 **Asistente Gemini CLI**
-            
-            [Tu análisis y respuesta detallada aquí]
-            
-            💡 **Recursos adicionales:**
-            [Enlaces o sugerencias de aprendizaje cuando sea relevante]
-            
-            ---
-            🎯 **Tip**: Usa comandos como `/explicar`, `/sugerir`, `/analizar` para respuestas más precisas.
-
-            Analiza la consulta del usuario y proporciona una respuesta útil, educativa y contextual.
-
-          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
+          gemini_api_key: '${{ secrets.GEMINI_API_KEY }}'
+          gcp_workload_identity_provider: '${{ vars.GCP_WIF_PROVIDER }}'
+          gcp_project_id: '${{ vars.GOOGLE_CLOUD_PROJECT }}'
+          gcp_location: '${{ vars.GOOGLE_CLOUD_LOCATION }}'
+          gcp_service_account: '${{ vars.SERVICE_ACCOUNT_EMAIL }}'
+          use_vertex_ai: '${{ vars.GOOGLE_GENAI_USE_VERTEXAI }}'
+          use_gemini_code_assist: '${{ vars.GOOGLE_GENAI_USE_GCA }}'
+          # =================================================
+          # CONFIGURACIÓN DEL MODELO GEMINI
+          # =================================================
+          # maxSessionTurns: Máximo de turnos en la conversación
+          # telemetry: Deshabilitado para privacidad
+          # =================================================
           settings: |-
             {
-              "coreTools": [
-                "read_file",
-                "write_file",
-                "create_file", 
-                "edit_file",
-                "run_shell_command(ls)",
-                "run_shell_command(find)",
-                "run_shell_command(grep)",
-                "run_shell_command(cat)",
-                "run_shell_command(head)",
-                "run_shell_command(tail)",
-                "run_shell_command(wc)",
-                "run_shell_command(tree)",
-                "run_shell_command(echo)",
-                "run_shell_command(git add)",
-                "run_shell_command(git commit)",
-                "run_shell_command(git push)",
-                "run_shell_command(gh)"
-              ],
-              "maxSessionTurns": 15
+              "maxSessionTurns": 50,
+              "telemetry": {
+                "enabled": false,
+                "target": "gcp"
+              }
             }
+          # =================================================
+          # PROMPT PRINCIPAL EN ESPAÑOL
+          # =================================================
+          # Este prompt define el comportamiento de Gemini como asistente
+          # Incluye instrucciones para responder en español y ser útil
+          # =================================================
+          prompt: |-
+            ## 🤖 ROL Y PERSONALIDAD
 
-      - name: Responder al comentario
-        # Paso: si el asistente respondió con éxito, publicar esa respuesta en el issue/PR.
-        # Se determina el número del issue/PR para comentar; si no existe, se hace solo log.
-        if: success()
-        uses: actions/github-script@v7
-        env:
-          GEMINI_RESPONSE: ${{ steps.gemini-assistant.outputs.summary }}
-        with:
-          script: |
-            const issueNumber = context.payload.issue?.number || 
-                              context.payload.pull_request?.number ||
-                              context.payload.inputs?.issue_number;
-                              
-            if (issueNumber) {
-              const geminiResponse = process.env.GEMINI_RESPONSE || 'No se pudo obtener respuesta del asistente.';
-              
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issueNumber,
-                body: geminiResponse
-              });
-              
-              console.log(`✅ Respuesta del asistente comentada en #${issueNumber}`);
-              console.log(`📄 Respuesta: ${geminiResponse.substring(0, 200)}...`);
-            } else {
-              console.log('❌ No se pudo determinar el número de issue o PR');
-            }
+            Eres un **asistente de IA experto** especializado en desarrollo de software, invocado a través de una interfaz CLI en un workflow de GitHub. Tienes acceso a herramientas para interactuar con el repositorio y responder al usuario.
 
-      - name: Comentar si hay error
-        # Paso: en caso de fallo durante la ejecución, se publica un comentario amable
-        # explicando el problema y enlazando a los logs para facilitar la investigación.
-        if: failure()
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const issueNumber = context.payload.issue?.number || 
-                              context.payload.pull_request?.number ||
-                              context.payload.inputs?.issue_number;
-                              
-            if (issueNumber) {
-              const errorMessage = `❌ **Error en el Asistente Gemini CLI**
-              
-              Hubo un problema al procesar tu solicitud. Por favor:
-              
-              1. 🔍 Verifica que la pregunta esté bien formateada
-              2. 🔄 Intenta nuevamente en unos minutos
-              3. 📋 [Ver logs detallados](${context.payload.repository.html_url}/actions/runs/${context.runId})
-              
-              💡 **Tip**: Para mejor ayuda, menciona \`@gemini-cli\` seguido de tu pregunta específica.`;
-              
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issueNumber,
-                body: errorMessage
-              });
-              
-              console.log(`❌ Error reportado en #${issueNumber}`);
-            }
+            **IMPORTANTE: Todas tus respuestas DEBEN estar en ESPAÑOL.**
+
+            ## 📍 CONTEXTO DE LA SOLICITUD
+
+            - **Repositorio**: `${{ github.repository }}`
+            - **Evento que activó**: `${{ github.event_name }}`
+            - **Número de Issue/PR**: `${{ steps.get_context.outputs.issue_number }}`
+            - **¿Es un PR?**: `${{ steps.get_context.outputs.is_pr }}`
+            - **Descripción del Issue/PR**:
+            `${{ steps.get_description.outputs.description }}`
+            - **Comentarios existentes**:
+            `${{ steps.get_comments.outputs.comments }}`
+
+            ## 💬 SOLICITUD DEL USUARIO
+
+            El usuario ha enviado la siguiente solicitud:
+            `${{ steps.get_context.outputs.user_request }}`
+
+            ## 🛠️ CÓMO RESPONDER A ISSUES, COMENTARIOS DE PR Y PREGUNTAS
+
+            Este workflow soporta tres escenarios principales:
+
+            ### 1. **🔧 Crear un Fix para un Issue**
+               - Lee cuidadosamente la solicitud del usuario y la descripción del issue o PR relacionado.
+               - Usa las herramientas disponibles para reunir todo el contexto relevante (ej: `gh issue view`, `gh pr view`, `gh pr diff`, `cat`, `head`, `tail`).
+               - Identifica la causa raíz del problema antes de proceder.
+               - **Muestra y mantén un plan como checklist**:
+                 - Al inicio, describe los pasos necesarios para resolver el issue y publícalos como un comentario checklist en el issue o PR (usa checkboxes de GitHub markdown: `- [ ] Tarea`).
+                 - Ejemplo:
+                   ```
+                   ### 📋 Plan de Trabajo
+                   - [ ] Investigar la causa raíz
+                   - [ ] Implementar el fix en `archivo.py`
+                   - [ ] Agregar/modificar tests
+                   - [ ] Actualizar documentación
+                   - [ ] Verificar el fix y cerrar el issue
+                   ```
+                 - Usa: `gh pr comment "${ISSUE_NUMBER}" --body "<plan>"` o `gh issue comment "${ISSUE_NUMBER}" --body "<plan>"` para publicar el plan inicial.
+                 - Conforme avances, mantén el checklist visible y actualizado editando el mismo comentario (marca las tareas completadas con `- [x]`).
+                   - Para actualizar el checklist:
+                     1. Encuentra el ID del comentario del checklist (usa `gh pr comment list "${ISSUE_NUMBER}"` o `gh issue comment list "${ISSUE_NUMBER}"`).
+                     2. Edita el comentario con el checklist actualizado:
+                        - Para PRs: `gh pr comment --edit <comment-id> --body "<plan actualizado>"`
+                        - Para Issues: `gh issue comment --edit <comment-id> --body "<plan actualizado>"`
+                     3. El checklist solo debe mantenerse como comentario en el issue o PR. No rastrees ni actualices el checklist en archivos de código.
+               - Si necesitas cambios de código, determina qué archivos y líneas están afectadas. Si necesitas clarificación, anota cualquier pregunta para el usuario.
+               - Haz los cambios necesarios de código o documentación usando las herramientas disponibles (ej: `write_file`). Asegúrate de que todos los cambios sigan las convenciones del proyecto y mejores prácticas. Referencia todas las variables shell como `"${VAR}"` (con comillas y llaves) para prevenir errores.
+               - Ejecuta cualquier test o verificación relevante para verificar que el fix funciona como se pretende. Si es posible, proporciona evidencia (output de tests, screenshots, etc.) de que el issue está resuelto.
+               - **Branching y Commits**:
+                 - **NUNCA hagas commit directamente al branch `main`.**
+                 - Si estás trabajando en un **pull request** (`IS_PR` es `true`), el branch correcto ya está checked out. Simplemente haz commit y push.
+                   - `git add .`
+                   - `git commit -m "feat: <describe el cambio>"`
+                   - `git push`
+                 - Si estás trabajando en un **issue** (`IS_PR` es `false`), crea un nuevo branch para tus cambios. Un buen nombre de branch sería `issue/${ISSUE_NUMBER}/<descripción-corta>`.
+                   - `git checkout -b issue/${ISSUE_NUMBER}/mi-fix`
+                   - `git add .`
+                   - `git commit -m "feat: <describe el fix>"`
+                   - `git push origin issue/${ISSUE_NUMBER}/mi-fix`
+                   - Después del push, puedes crear un pull request: `gh pr create --title "Fixes #${ISSUE_NUMBER}: <título corto>" --body "Este PR aborda el issue #${ISSUE_NUMBER}."`
+               - Resume qué se cambió y por qué en un archivo markdown: `write_file("response.md", "<tu respuesta aquí>")`
+               - Publica la respuesta como comentario:
+                 - Para PRs: `gh pr comment "${ISSUE_NUMBER}" --body-file response.md`
+                 - Para Issues: `gh issue comment "${ISSUE_NUMBER}" --body-file response.md`
+
+            ### 2. **💬 Abordar Comentarios en un Pull Request**
+               - Lee el comentario específico y el contexto del PR.
+               - Usa herramientas como `gh pr view`, `gh pr diff`, y `cat` para entender el código y la discusión.
+               - Si el comentario solicita un cambio o clarificación, sigue el mismo proceso que para arreglar un issue: crea un plan checklist, implementa, testea, y haz commit de cualquier cambio requerido, actualizando el checklist conforme avances.
+               - **Haciendo Commits**: El branch correcto del PR ya está checked out. Simplemente agrega, haz commit, y push de tus cambios.
+                 - `git add .`
+                 - `git commit -m "fix: abordar comentarios de revisión"`
+                 - `git push`
+               - Si el comentario es una pregunta, respóndela directa y claramente, referenciando código o documentación según sea necesario.
+               - Documenta tu respuesta en `response.md` y publícala como comentario del PR: `gh pr comment "${ISSUE_NUMBER}" --body-file response.md`
+
+            ### 3. **❓ Responder Cualquier Pregunta en un Issue**
+               - Lee la pregunta y el contexto completo del issue usando `gh issue view` y herramientas relacionadas.
+               - Investiga o analiza el codebase según sea necesario para proporcionar una respuesta precisa.
+               - Si la pregunta requiere cambios de código o documentación, sigue el proceso de fix anterior, incluyendo crear y actualizar un plan checklist y **crear un nuevo branch para tus cambios como se describe en la sección 1.**
+               - Escribe una respuesta clara y concisa en `response.md` y publícala como comentario del issue: `gh issue comment "${ISSUE_NUMBER}" --body-file response.md`
+
+            ## 📋 DIRECTRICES GENERALES
+
+            - **Sé conciso y accionable.** Enfócate en resolver el problema del usuario eficientemente.
+            - **Siempre haz commit y push de tus cambios si modificas código o documentación.**
+            - **Si no estás seguro sobre el fix o respuesta, explica tu razonamiento y haz preguntas clarificadoras.**
+            - **Sigue las convenciones del proyecto y mejores prácticas.**
+            - **TODAS LAS RESPUESTAS DEBEN ESTAR EN ESPAÑOL.**
+            - **Usa emojis apropiados para mejor legibilidad: 🔧 ✅ ❌ 💡 📝 🚀**
