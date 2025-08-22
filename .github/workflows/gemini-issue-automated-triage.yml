@@ -121,23 +121,17 @@ jobs:
         id: 'gemini_issue_analysis'
         env:
           GITHUB_TOKEN: '' # No pasar token de auth aquí por seguridad
-          ISSUE_TITLE: '${{ github.event.issue.title }}'
-          ISSUE_BODY: '${{ github.event.issue.body }}'
-          ISSUE_NUMBER: '${{ github.event.issue.number }}'
+          ISSUE_TITLE: '${{ github.event.issue.title || github.event.inputs.issue_number }}'
+          ISSUE_BODY: '${{ github.event.issue.body || github.event.inputs.issue_number }}'
+          ISSUE_NUMBER: '${{ github.event.issue.number || github.event.inputs.issue_number }}'
           REPOSITORY: '${{ github.repository }}'
           AVAILABLE_LABELS: '${{ steps.get_labels.outputs.available_labels }}'
         with:
-          gemini_cli_version: '${{ vars.GEMINI_CLI_VERSION }}'
-          gcp_workload_identity_provider: '${{ vars.GCP_WIF_PROVIDER }}'
-          gcp_project_id: '${{ vars.GOOGLE_CLOUD_PROJECT }}'
-          gcp_location: '${{ vars.GOOGLE_CLOUD_LOCATION }}'
-          gcp_service_account: '${{ vars.SERVICE_ACCOUNT_EMAIL }}'
           gemini_api_key: '${{ secrets.GEMINI_API_KEY }}'
-          use_vertex_ai: '${{ vars.GOOGLE_GENAI_USE_VERTEXAI }}'
-          use_gemini_code_assist: '${{ vars.GOOGLE_GENAI_USE_GCA }}'
           settings: |-
             {
               "maxSessionTurns": 25,
+              "model": "gemini-1.5-flash",
               "coreTools": [
                 "run_shell_command(echo)"
               ],
@@ -216,7 +210,7 @@ jobs:
           ${{ steps.gemini_issue_analysis.outputs.summary != '' }}
         env:
           REPOSITORY: '${{ github.repository }}'
-          ISSUE_NUMBER: '${{ github.event.issue.number }}'
+          ISSUE_NUMBER: '${{ github.event.issue.number || github.event.inputs.issue_number }}'
           LABELS_OUTPUT: '${{ steps.gemini_issue_analysis.outputs.summary }}'
         uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea'
         with:
@@ -225,9 +219,23 @@ jobs:
             // Limpiar marcadores de bloque de código si están presentes
             const rawLabels = process.env.LABELS_OUTPUT;
             core.info(`JSON crudo de labels: ${rawLabels}`);
+            
+            // Validar que hay contenido
+            if (!rawLabels || rawLabels.trim() === '') {
+              core.setFailed('No se recibió respuesta de Gemini');
+              return;
+            }
+            
             let parsedLabels;
             try {
               const trimmedLabels = rawLabels.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '').trim();
+              
+              // Verificar si la respuesta es JSON válido
+              if (!trimmedLabels.startsWith('{')) {
+                core.setFailed(`La respuesta de Gemini no es JSON válido: ${trimmedLabels.substring(0, 100)}...`);
+                return;
+              }
+              
               parsedLabels = JSON.parse(trimmedLabels);
               core.info(`JSON de labels procesado: ${JSON.stringify(parsedLabels)}`);
             } catch (err) {
@@ -236,6 +244,12 @@ jobs:
             }
 
             const issueNumber = parseInt(process.env.ISSUE_NUMBER);
+            
+            // Validar que tenemos un número de issue válido
+            if (isNaN(issueNumber)) {
+              core.setFailed(`Número de issue inválido: ${process.env.ISSUE_NUMBER}`);
+              return;
+            }
 
             // Aplicar labels basándose en el resultado del triage
             if (parsedLabels.labels_to_set && parsedLabels.labels_to_set.length > 0) {
@@ -262,7 +276,7 @@ jobs:
         if: |-
           ${{ failure() && steps.gemini_issue_analysis.outcome == 'failure' }}
         env:
-          ISSUE_NUMBER: '${{ github.event.issue.number }}'
+          ISSUE_NUMBER: '${{ github.event.issue.number || github.event.inputs.issue_number }}'
           RUN_URL: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
         uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea'
         with:
