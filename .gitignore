@@ -166,3 +166,10 @@ docs/.doctrees/
 *.njsproj
 *.sln
 *.sw?
+
+
+# gemini-cli settings
+.gemini/
+
+# GitHub App credentials
+gha-creds-*.json

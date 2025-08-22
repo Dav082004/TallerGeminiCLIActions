@@ -1,259 +1,285 @@
-name: 🏷️ Gemini CLI - Clasificación de Issues
-
 # =============================================================
-# WORKFLOW: Gemini CLI - Clasificación de Issues
+# WORKFLOW: Gemini CLI - Clasificación Automática de Issues
 # =============================================================
-# Este workflow utiliza Gemini CLI para analizar y clasificar issues automáticamente.
-#
-# ¿Qué hace?
-# - Detecta nuevos issues, comentarios con comandos especiales o ejecuciones manuales.
-# - Analiza el contenido del issue y sugiere etiquetas, prioridad, complejidad y área.
-# - Comenta el análisis y aplica etiquetas automáticamente.
-#
-# Disparadores principales:
-# - Cuando se crea, edita o reabre un issue.
-# - Cuando se comenta en un issue usando @gemini-cli y el comando /triage.
-# - Cuando se ejecuta manualmente desde la interfaz de GitHub (workflow_dispatch).
+# Este workflow proporciona clasificación automática de issues usando IA
+# Funcionalidades:
+# - 🏷️ Asigna labels automáticamente a issues nuevos
+# - 🤖 Analiza contenido y context con Gemini
+# - 💬 Responde al comando @gemini-cli /triage
+# - 📋 Usa solo labels existentes en el repositorio
 # =============================================================
 
+name: '🏷️ Gemini Automated Issue Triage'
+
+# EVENTOS QUE ACTIVAN EL WORKFLOW
 on:
-  issues:
-    types: [opened, edited, reopened]
-  issue_comment:
-    types: [created]
-  pull_request_review_comment:
-    types: [created]
-  workflow_dispatch:
+  issues:                           # Issues nuevos o reabiertos
+    types:
+      - 'opened'
+      - 'reopened'
+  issue_comment:                    # Comando /triage en comentarios
+    types:
+      - 'created'
+  workflow_dispatch:                # Ejecución manual
     inputs:
       issue_number:
-        description: "Número del issue o PR a clasificar"
-        required: false
-        type: string
+        description: 'Número del issue a clasificar'
+        required: true
+        type: 'number'
+
+# CONTROL DE CONCURRENCIA
+# Evita múltiples ejecuciones en el mismo issue
+concurrency:
+  group: '${{ github.workflow }}-${{ github.event.issue.number }}'
+  cancel-in-progress: true
+
+# CONFIGURACIÓN PREDETERMINADA
+defaults:
+  run:
+    shell: 'bash'
+
+# PERMISOS NECESARIOS
+permissions:
+  contents: 'read'         # 📖 Para leer el repositorio
+  id-token: 'write'        # 🔐 Para autenticación con Google Cloud
+  issues: 'write'          # 🏷️ Para agregar labels a issues
+  statuses: 'write'        # 📊 Para actualizar estados
 
 jobs:
-  triage:
-    name: Clasificar Issue con Gemini
-    runs-on: ubuntu-latest
-
-    # ----------------------------------------------------------------------
-    # CONDICIÓN DE EJECUCIÓN (if):
-    # Solo ejecuta el job si se cumple al menos uno de estos casos:
-    # 1. El workflow fue lanzado manualmente (workflow_dispatch)
-    # 2. Se abrió un nuevo issue (event_name == 'issues' && action == 'opened')
-    # 3. Se comentó en un issue, el comentario menciona a @gemini-cli y contiene /triage
-    #    (event_name == 'issue_comment' && ...)
-    # 4. Se comentó en un PR, el comentario menciona a @gemini-cli y contiene /triage
-    #    (event_name == 'pull_request_review_comment' && ...)
-    # Esto evita ejecuciones innecesarias y asegura que solo actúe en los casos relevantes.
-    # ----------------------------------------------------------------------
-    if: >-
+  triage-issue:
+    # =================================================================
+    # CONDICIONES DE ACTIVACIÓN
+    # =================================================================
+    # Se ejecuta cuando:
+    # 1. Se abre o reabre un issue
+    # 2. Se ejecuta manualmente
+    # 3. Alguien con permisos usa @gemini-cli /triage
+    # =================================================================
+    if: |-
+      github.event_name == 'issues' ||
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'issues' && github.event.action == 'opened') ||
-      (github.event_name == 'issue_comment' && 
-       github.event.issue != null &&
-       contains(github.event.comment.body, '@gemini-cli') && 
-       contains(github.event.comment.body, '/triage')) ||
-      (github.event_name == 'pull_request_review_comment' && 
-       contains(github.event.comment.body, '@gemini-cli') && 
-       contains(github.event.comment.body, '/triage'))
-
-    permissions:
-      contents: read
-      issues: write
-      pull-requests: write
-
-  # ----------------------------------------------------------------------
-  # PERMISOS:
-  # - contents:read        → Permite leer archivos del repositorio si Gemini lo requiere para contexto.
-  # - issues:write         → Necesario para publicar comentarios y aplicar etiquetas al issue.
-  # - pull-requests:write  → Necesario para comentar en PRs cuando se use /triage en PRs.
-  # ----------------------------------------------------------------------
-
+      (
+        github.event_name == 'issue_comment' &&
+        contains(github.event.comment.body, '@gemini-cli /triage') &&
+        contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
+      )
+    timeout-minutes: 5
+    runs-on: 'ubuntu-latest'
+    
     steps:
-      - name: Obtener información del issue
-        # -------------------------------------------------------------
-        # Paso 1: Recopilar número, título, cuerpo y URL del issue.
-        # - Si el evento es 'issues', toma los datos directamente.
-        # - Si es 'issue_comment' o 'workflow_dispatch', consulta el issue por API.
-        # Esto permite que el workflow funcione tanto en triggers automáticos como manuales.
-        # -------------------------------------------------------------
-        id: get-issue
-        uses: actions/github-script@v7
+      # =================================================================
+      # PASO 1: CHECKOUT DEL REPOSITORIO
+      # =================================================================
+      # Necesario para acceder a los archivos del proyecto
+      # =================================================================
+      - name: '📥 Checkout del repositorio'
+        uses: 'actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8' # ratchet:actions/checkout@v5
+
+      # =================================================================
+      # PASO 2: GENERAR TOKEN DE GITHUB APP (OPCIONAL)
+      # =================================================================
+      # Si se configura una GitHub App, genera un token personalizado
+      # =================================================================
+      - name: '🔐 Generar Token de GitHub App'
+        id: 'generate_token'
+        if: |-
+          ${{ vars.APP_ID }}
+        uses: 'actions/create-github-app-token@a8d616148505b5069dccd32f177bb87d7f39123b' # ratchet:actions/create-github-app-token@v2
         with:
-          script: |
-            let issueNumber;
-            let issueData;
-            
-            if (context.eventName === 'issues') {
-              // Issue creado directamente
-              issueNumber = context.issue.number;
-              issueData = context.payload.issue;
-            } else if (context.eventName === 'issue_comment') {
-              // Comentario en issue
-              issueNumber = context.issue.number;
-              const { data: issue } = await github.rest.issues.get({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issueNumber
-              });
-              issueData = issue;
-            } else if (context.eventName === 'workflow_dispatch') {
-              // Ejecución manual
-              issueNumber = context.payload.inputs.issue_number || context.issue.number;
-              const { data: issue } = await github.rest.issues.get({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issueNumber
-              });
-              issueData = issue;
-            }
-            
-            core.setOutput('issue_number', issueNumber);
-            core.setOutput('issue_title', issueData.title);
-            core.setOutput('issue_body', issueData.body);
-            core.setOutput('issue_url', issueData.html_url);
+          app-id: '${{ vars.APP_ID }}'
+          private-key: '${{ secrets.APP_PRIVATE_KEY }}'
 
-      - name: Ejecutar Gemini CLI para Clasificación
-        # -------------------------------------------------------------
-        # Paso 2: Enviar prompt a Gemini CLI con el título y cuerpo del issue.
-        # El prompt explica a Gemini cómo debe analizar y clasificar el issue.
-        # Gemini responde con un análisis estructurado y sugerencias.
-        # -------------------------------------------------------------
-        id: gemini-analysis
-        uses: google-github-actions/run-gemini-cli@v0.1.10
+      # =================================================================
+      # PASO 3: OBTENER LABELS EXISTENTES DEL REPOSITORIO
+      # =================================================================
+      # Recopila todos los labels disponibles para que Gemini solo use
+      # labels que ya existen en el repositorio
+      # =================================================================
+      - name: '🏷️ Obtener Labels del Repositorio'
+        id: 'get_labels'
+        uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea'
         with:
-          prompt: |
-            Eres un experto en gestión de proyectos y clasificación de issues de software.
+          github-token: '${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}'
+          script: |-
+            const { data: labels } = await github.rest.issues.listLabelsForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const labelNames = labels.map(label => label.name);
+            core.setOutput('available_labels', labelNames.join(','));
+            core.info(`Encontrados ${labelNames.length} labels: ${labelNames.join(', ')}`);
+            return labelNames;
 
-            **ISSUE A ANALIZAR:**
-            Título: ${{ steps.get-issue.outputs.issue_title }}
-            Descripción: ${{ steps.get-issue.outputs.issue_body }}
-
-            Tu tarea es analizar el siguiente issue y:
-
-            1. **Categorizar** el tipo de issue:
-               - `bug` - Errores o fallos
-               - `feature` - Nuevas funcionalidades
-               - `enhancement` - Mejoras a funcionalidad existente
-               - `documentation` - Relacionado con documentación
-               - `question` - Preguntas o consultas
-               - `maintenance` - Tareas de mantenimiento
-               - `security` - Problemas de seguridad
-
-            2. **Determinar prioridad**:
-               - `priority-critical` - Crítico, bloquea funcionalidad principal
-               - `priority-high` - Alto, impacta usuarios importantes
-               - `priority-medium` - Medio, mejora experiencia
-               - `priority-low` - Bajo, mejora menor
-
-            3. **Evaluar complejidad**:
-               - `complexity-simple` - Solución directa, pocas horas
-               - `complexity-medium` - Requiere análisis, días
-               - `complexity-complex` - Cambios arquitectónicos, semanas
-
-            4. **Identificar área**:
-               - `area-frontend` - Interfaz de usuario
-               - `area-backend` - Lógica del servidor
-               - `area-database` - Base de datos
-               - `area-api` - APIs y servicios
-               - `area-devops` - Infraestructura y despliegue
-               - `area-testing` - Pruebas y QA
-
-            **Formato de respuesta**:
-
-            ## 🏷️ Clasificación Automática
-
-            **Tipo**: [tipo]
-            **Prioridad**: [prioridad]  
-            **Complejidad**: [complejidad]
-            **Área**: [área]
-
-            ## 📋 Análisis
-
-            [Breve explicación del issue y razón de la clasificación]
-
-            ## 🎯 Recomendaciones
-
-            - [Sugerencia 1]
-            - [Sugerencia 2]
-
-            Responde siempre en español y sé específico en tu análisis.
-
-          gemini_api_key: ${{ secrets.GEMINI_API_KEY }}
-
-      - name: Comentar clasificación en el issue
-        # -------------------------------------------------------------
-        # Paso 3: Si Gemini responde correctamente, comentar el análisis en el issue
-        # y aplicar etiquetas automáticamente.
-        # - Extrae patrones de la respuesta para convertirlos en labels.
-        # - Aplica todas las etiquetas encontradas (tipo, prioridad, complejidad, área).
-        # -------------------------------------------------------------
-        if: success()
-        uses: actions/github-script@v7
+      # =================================================================
+      # PASO 4: ANÁLISIS DEL ISSUE CON GEMINI
+      # =================================================================
+      # El corazón del workflow: Gemini analiza el issue y sugiere labels
+      # Configuración: Modelo, herramientas limitadas, prompt en español
+      # =================================================================
+      - name: '🤖 Análisis del Issue con Gemini'
+        uses: 'google-github-actions/run-gemini-cli@v0'
+        id: 'gemini_issue_analysis'
         env:
-          GEMINI_RESPONSE: ${{ steps.gemini-analysis.outputs.summary }}
+          GITHUB_TOKEN: '' # No pasar token de auth aquí por seguridad
+          ISSUE_TITLE: '${{ github.event.issue.title }}'
+          ISSUE_BODY: '${{ github.event.issue.body }}'
+          ISSUE_NUMBER: '${{ github.event.issue.number }}'
+          REPOSITORY: '${{ github.repository }}'
+          AVAILABLE_LABELS: '${{ steps.get_labels.outputs.available_labels }}'
         with:
-          script: |
-            const issueNumber = ${{ steps.get-issue.outputs.issue_number }};
+          gemini_cli_version: '${{ vars.GEMINI_CLI_VERSION }}'
+          gcp_workload_identity_provider: '${{ vars.GCP_WIF_PROVIDER }}'
+          gcp_project_id: '${{ vars.GOOGLE_CLOUD_PROJECT }}'
+          gcp_location: '${{ vars.GOOGLE_CLOUD_LOCATION }}'
+          gcp_service_account: '${{ vars.SERVICE_ACCOUNT_EMAIL }}'
+          gemini_api_key: '${{ secrets.GEMINI_API_KEY }}'
+          use_vertex_ai: '${{ vars.GOOGLE_GENAI_USE_VERTEXAI }}'
+          use_gemini_code_assist: '${{ vars.GOOGLE_GENAI_USE_GCA }}'
+          settings: |-
+            {
+              "maxSessionTurns": 25,
+              "coreTools": [
+                "run_shell_command(echo)"
+              ],
+              "telemetry": {
+                "enabled": false,
+                "target": "gcp"
+              }
+            }
+          # =================================================
+          # PROMPT EN ESPAÑOL PARA CLASIFICACIÓN DE ISSUES
+          # =================================================
+          prompt: |-
+            ## 🤖 ROL
 
-            if (issueNumber) {
-              const geminiResponse = process.env.GEMINI_RESPONSE || 'No se pudo obtener la respuesta de Gemini.';
-              
-              // Comentar la clasificación
-              await github.rest.issues.createComment({
+            Eres un asistente especializado en clasificación de issues de GitHub.
+            Analiza el issue actual e identifica los labels más apropiados de los
+            disponibles. Usa las herramientas disponibles para recopilar información;
+            no solicites que se proporcione información adicional.
+
+            **IMPORTANTE: Todas tus respuestas y explicaciones DEBEN estar en ESPAÑOL.**
+
+            ## 📋 PASOS A SEGUIR
+
+            1. 🔍 Revisa los labels disponibles en la variable de entorno: "${AVAILABLE_LABELS}".
+            2. 📖 Revisa el título y cuerpo del issue proporcionados en las variables
+               de entorno: "${ISSUE_TITLE}" y "${ISSUE_BODY}".
+            3. 🏷️ Clasifica el issue usando los labels apropiados de los disponibles.
+            4. 📤 Genera la salida en formato JSON con explicación detallada, por ejemplo:
+               ```
+               {"labels_to_set": ["kind/bug", "priority/p0"], "explanation": "Este es un reporte de bug crítico que afecta la funcionalidad principal del sistema. Se asigna 'kind/bug' porque describe un comportamiento no deseado y 'priority/p0' porque impacta severamente a los usuarios."}
+               ```
+            5. ❌ Si el issue no puede clasificarse con los labels disponibles, genera:
+               ```
+               {"labels_to_set": [], "explanation": "No es posible clasificar este issue con los labels disponibles en el repositorio. Se necesitarían labels adicionales como 'tipo/consulta' o 'estado/necesita-más-info'."}
+               ```
+
+            ## 📏 DIRECTRICES DE CLASIFICACIÓN
+
+            - ✅ **Solo usa labels que ya existen en el repositorio**
+            - 🎯 **Asigna TODOS los labels aplicables basándote en el contenido del issue**
+            - 🔍 **Analiza cuidadosamente el tipo de issue**: bug, feature request, documentación, etc.
+            - ⚡ **Considera la prioridad y severidad** si hay labels disponibles
+            - 📋 **Evalúa la categoría/componente** afectado
+            - 🏷️ **Explica claramente por qué cada label es apropiado**
+            - 💡 **Si no hay labels apropiados, explica qué labels serían necesarios**
+            - 📝 **Usa formato JSON válido únicamente**
+            - 🚫 **No incluyas explicaciones adicionales fuera del JSON**
+            - 🔧 **Referencia variables shell como "${VAR}" (con comillas y llaves)**
+
+            ## 🎯 EJEMPLOS DE BUENA CLASIFICACIÓN
+
+            **Bug Report:**
+            ```json
+            {"labels_to_set": ["bug", "severity/high", "component/frontend"], "explanation": "Se trata de un bug en el frontend que causa errores críticos para los usuarios. 'bug' identifica el tipo de issue, 'severity/high' indica el impacto significativo, y 'component/frontend' especifica la área afectada."}
+            ```
+
+            **Feature Request:**
+            ```json
+            {"labels_to_set": ["enhancement", "priority/medium", "area/api"], "explanation": "Es una solicitud de nueva funcionalidad para la API. 'enhancement' categoriza como mejora, 'priority/medium' indica importancia moderada, y 'area/api' especifica el componente donde se implementaría."}
+            ```
+
+            **Documentación:**
+            ```json
+            {"labels_to_set": ["documentation", "good first issue"], "explanation": "Se solicita mejora en la documentación. 'documentation' identifica el tipo de tarea y 'good first issue' porque es una contribución accesible para nuevos colaboradores."}
+            ```
+
+            Analiza el issue actual y proporciona una clasificación precisa y bien justificada.
+
+      # =================================================================
+      # PASO 5: APLICAR LABELS AL ISSUE
+      # =================================================================
+      # Procesa la respuesta de Gemini y aplica los labels sugeridos
+      # =================================================================
+      - name: '🏷️ Aplicar Labels al Issue'
+        if: |-
+          ${{ steps.gemini_issue_analysis.outputs.summary != '' }}
+        env:
+          REPOSITORY: '${{ github.repository }}'
+          ISSUE_NUMBER: '${{ github.event.issue.number }}'
+          LABELS_OUTPUT: '${{ steps.gemini_issue_analysis.outputs.summary }}'
+        uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea'
+        with:
+          github-token: '${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}'
+          script: |-
+            // Limpiar marcadores de bloque de código si están presentes
+            const rawLabels = process.env.LABELS_OUTPUT;
+            core.info(`JSON crudo de labels: ${rawLabels}`);
+            let parsedLabels;
+            try {
+              const trimmedLabels = rawLabels.replace(/^```(?:json)?\s*/, '').replace(/\s*```$/, '').trim();
+              parsedLabels = JSON.parse(trimmedLabels);
+              core.info(`JSON de labels procesado: ${JSON.stringify(parsedLabels)}`);
+            } catch (err) {
+              core.setFailed(`Error al procesar JSON de labels desde Gemini: ${err.message}\nSalida cruda: ${rawLabels}`);
+              return;
+            }
+
+            const issueNumber = parseInt(process.env.ISSUE_NUMBER);
+
+            // Aplicar labels basándose en el resultado del triage
+            if (parsedLabels.labels_to_set && parsedLabels.labels_to_set.length > 0) {
+              await github.rest.issues.setLabels({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
                 issue_number: issueNumber,
-                body: `🤖 **Clasificación Automática por Gemini CLI**\n\n${geminiResponse}`
+                labels: parsedLabels.labels_to_set
               });
-              
-              // Extraer y aplicar labels automáticamente
-              const labels = [];
-              
-              // Buscar patrones de labels en la respuesta
-              const typeMatch = geminiResponse.match(/\*\*Tipo\*\*:\s*`?([^`\n]*)`?/);
-              const priorityMatch = geminiResponse.match(/\*\*Prioridad\*\*:\s*`?([^`\n]*)`?/);
-              const complexityMatch = geminiResponse.match(/\*\*Complejidad\*\*:\s*`?([^`\n]*)`?/);
-              const areaMatch = geminiResponse.match(/\*\*Área\*\*:\s*`?([^`\n]*)`?/);
-              
-              if (typeMatch) labels.push(typeMatch[1].trim());
-              if (priorityMatch) labels.push(priorityMatch[1].trim());
-              if (complexityMatch) labels.push(complexityMatch[1].trim());
-              if (areaMatch) {
-                // Manejar múltiples áreas separadas por comas
-                const areas = areaMatch[1].split(',').map(area => area.trim().replace(/`/g, ''));
-                labels.push(...areas);
-              }
-              
-              // Aplicar labels al issue
-              if (labels.length > 0) {
-                await github.rest.issues.addLabels({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  issue_number: issueNumber,
-                  labels: labels
-                });
-                
-                console.log(`Labels aplicados: ${labels.join(', ')}`);
-              }
+              const explanation = parsedLabels.explanation ? ` - ${parsedLabels.explanation}` : '';
+              core.info(`✅ Labels aplicados exitosamente para #${issueNumber}: ${parsedLabels.labels_to_set.join(', ')}${explanation}`);
+            } else {
+              // Si no hay labels que aplicar, dejar el issue como está
+              const explanation = parsedLabels.explanation ? ` - ${parsedLabels.explanation}` : '';
+              core.info(`ℹ️ No hay labels que aplicar para #${issueNumber}, dejando como está${explanation}`);
             }
 
-      - name: Comentar si hay error
-        # -------------------------------------------------------------
-        # Paso 4: Si ocurre un error en cualquier paso anterior, publica un comentario
-        # en el issue con un mensaje de error y un enlace a los logs de la ejecución.
-        # -------------------------------------------------------------
-        if: failure()
-        uses: actions/github-script@v7
+      # =================================================================
+      # PASO 6: COMENTARIO DE ERROR EN CASO DE FALLO
+      # =================================================================
+      # Si el análisis falla, informa al usuario con un comentario
+      # =================================================================
+      - name: '❌ Publicar Comentario de Error en Análisis'
+        if: |-
+          ${{ failure() && steps.gemini_issue_analysis.outcome == 'failure' }}
+        env:
+          ISSUE_NUMBER: '${{ github.event.issue.number }}'
+          RUN_URL: '${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
+        uses: 'actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea'
         with:
-          script: |
-            const issueNumber = ${{ steps.get-issue.outputs.issue_number }};
-                              
-            if (issueNumber) {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: issueNumber,
-                body: '❌ Error al clasificar el issue. [Ver logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})'
-              });
-            }
+          github-token: '${{ steps.generate_token.outputs.token || secrets.GITHUB_TOKEN }}'
+          script: |-
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: parseInt(process.env.ISSUE_NUMBER),
+              body: `❌ **Error en la Clasificación Automática de Issues**
+              
+            Hubo un problema con el sistema de clasificación automática Gemini CLI.
+            
+            🔍 **Acciones sugeridas:**
+            - Revisa los [logs de la acción](${process.env.RUN_URL}) para más detalles
+            - Intenta clasificar manualmente usando \`@gemini-cli /triage\`
+            - Contacta al administrador si el problema persiste
+            
+            💡 **Nota:** Puedes clasificar manualmente este issue mientras se resuelve el problema.`
+            })
